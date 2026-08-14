@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+
+# pnpm
+.pnpm-store
+
+# Build outputs
+dist
+build
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Coverage
+coverage
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+apps/pwa/dist
+
+# NestJS
+apps/api/dist
+
+# Turborepo/Nx (if you add them later)
+.turbo
+.nx
+
+# Misc
+*.tsbuildinfo

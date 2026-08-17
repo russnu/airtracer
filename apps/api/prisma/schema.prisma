@@ -1,20 +1,173 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
-  moduleFormat    = "cjs"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+//==========================================================================//
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  name     String
+  id String @id @default(cuid())
+
+  // Authentication
+  email        String @unique
+  passwordHash String
+
+  // Personal Information
+  firstName   String
+  lastName    String
+  phoneNumber String?
+
+  // RBAC
+  roles UserRole[]
+
+  // Account Status
+  isVerified Boolean @default(false)
+  isActive   Boolean @default(true)
+
+  // Security
+  lastLoginAt       DateTime?
+  passwordChangedAt DateTime?
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  serviceRecords ServiceRecord[]
+  assetsOwned    Asset[]
 }
+
+//==========================================================================//
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+
+  @@id([userId, roleId])
+}
+
+//==========================================================================//
+model Role {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//==========================================================================//
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+//==========================================================================//
+model Permission {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+}
+
+//==========================================================================//
+model Asset {
+  id String @id @default(cuid())
+
+  // Asset Identification
+  qrCode String @unique
+
+  // Equipment Information
+  brand        String
+  model        String
+  serialNumber String @unique
+
+  // // Equipment Classification
+  // dont implement right now
+  // equipmentType String?
+  // refrigerant   String?
+  // capacity      Float?
+  // capacityUnit  String?
+
+  // Installation Information
+  installationDate DateTime?
+  location         String?
+
+  // Ownership
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  // Maintenance
+  serviceRecords ServiceRecord[]
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([brand, model])
+}
+
+//==========================================================================//
+model ServiceRecord {
+  id String @id @default(cuid())
+
+  // Asset
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id])
+
+  // Technician
+  technicianId String
+  technician   User   @relation(fields: [technicianId], references: [id])
+
+  // Service Information
+  serviceDate DateTime
+  serviceType String
+  description String?
+
+  // // Operating Measurements
+  // dont implement right now
+  // suctionPressure   Float?
+  // dischargePressure Float?
+
+  // electricalCurrent Float?
+  // voltage           Float?
+
+  // // Condition / Findings
+  // findings        String?
+  // recommendations String?
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assetId])
+  @@index([technicianId])
+  @@index([serviceDate])
+}
+
+//==========================================================================//

@@ -1,8 +1,8 @@
 import { PrismaClient } from '../../generated/prisma/client';
-import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 
 export async function seedUsers(prisma: PrismaClient) {
-  const passwordHash = await bcrypt.hash('password', 10);
+  const passwordHash = await argon2.hash('password');
 
   const users = await Promise.all([
     prisma.user.upsert({

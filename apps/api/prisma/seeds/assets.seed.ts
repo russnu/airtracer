@@ -9,7 +9,6 @@ export async function seedAssets(prisma: PrismaClient) {
 
   const assets = [
     {
-      qrCode: 'AIRTRACER-AC-000001',
       brand: 'Daikin',
       model: 'FTKF35',
       serialNumber: 'DAIKIN-DEMO-000001',
@@ -18,7 +17,6 @@ export async function seedAssets(prisma: PrismaClient) {
       ownerId: owner.id,
     },
     {
-      qrCode: 'AIRTRACER-AC-000002',
       brand: 'Panasonic',
       model: 'CS-XU12',
       serialNumber: 'PANASONIC-DEMO-000001',
@@ -27,7 +25,6 @@ export async function seedAssets(prisma: PrismaClient) {
       ownerId: owner.id,
     },
     {
-      qrCode: 'AIRTRACER-AC-000003',
       brand: 'LG',
       model: 'DualCool',
       serialNumber: 'LG-DEMO-000001',

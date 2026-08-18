@@ -4,8 +4,8 @@ import { RoleName } from '../roles/enums/role-name.enum';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
-
+  constructor(private readonly prisma: PrismaService) {}
+  //-------------------------------------------------------------//
   async findAll() {
     return this.prisma.user.findMany();
   }

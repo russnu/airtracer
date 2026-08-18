@@ -1,7 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-
 generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
@@ -99,7 +98,7 @@ model Asset {
   id String @id @default(cuid())
 
   // Asset Identification
-  qrCode String @unique
+  qrCode QRCode?
 
   // Equipment Information
   brand        String
@@ -130,6 +129,26 @@ model Asset {
 
   @@index([ownerId])
   @@index([brand, model])
+}
+
+//==========================================================================//
+model QRCode {
+  id String @id @default(cuid())
+
+  // Public identifier encoded inside the QR
+  token String @unique
+
+  assetId String @unique
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  isActive Boolean @default(true)
+
+  generatedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
 }
 
 //==========================================================================//

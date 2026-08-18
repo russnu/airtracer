@@ -5,6 +5,7 @@ import { seedPermissions } from './permissions.seed';
 import { seedRoles } from './roles.seed';
 import { seedUsers } from './users.seed';
 import { seedAssets } from './assets.seed';
+import { seedQRCodes } from './qr.seed';
 import { seedServiceRecords } from './service-records.seed';
 
 const connectionString = process.env.DATABASE_URL;
@@ -26,6 +27,7 @@ async function main() {
   await seedRoles(prisma);
   await seedUsers(prisma);
   await seedAssets(prisma);
+  await seedQRCodes(prisma);
   await seedServiceRecords(prisma);
 
   console.log('\n✅ Database seed completed successfully.');

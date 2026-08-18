@@ -94,6 +94,23 @@ model Permission {
 }
 
 //==========================================================================//
+model EquipmentType {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  // Account Status
+  isActive Boolean @default(true)
+
+  // Relations
+  assets Asset[]
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//==========================================================================//
 model Asset {
   id String @id @default(cuid())
 
@@ -103,11 +120,13 @@ model Asset {
   // Equipment Information
   brand        String
   model        String
-  serialNumber String @unique
+  serialNumber String? @unique
 
-  // // Equipment Classification
-  // dont implement right now
-  // equipmentType String?
+  // Equipment Classification
+
+  equipmentTypeId String
+  equipmentType   EquipmentType @relation(fields: [equipmentTypeId], references: [id])
+
   // refrigerant   String?
   // capacity      Float?
   // capacityUnit  String?
@@ -128,6 +147,7 @@ model Asset {
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+  @@index([equipmentTypeId])
   @@index([brand, model])
 }
 

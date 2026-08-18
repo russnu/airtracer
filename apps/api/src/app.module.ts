@@ -9,6 +9,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { QrModule } from './qr/qr.module';
+import { AssetsModule } from './assets/assets.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { QrModule } from './qr/qr.module';
     PrismaModule,
     AuthModule,
     QrModule,
+    AssetsModule,
   ],
   providers: [
     {

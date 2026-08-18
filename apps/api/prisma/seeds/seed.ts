@@ -7,6 +7,7 @@ import { seedUsers } from './users.seed';
 import { seedAssets } from './assets.seed';
 import { seedQRCodes } from './qr.seed';
 import { seedServiceRecords } from './service-records.seed';
+import { seedEquipmentTypes } from './equipment-type.seed';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -26,6 +27,7 @@ async function main() {
   await seedPermissions(prisma);
   await seedRoles(prisma);
   await seedUsers(prisma);
+  await seedEquipmentTypes(prisma);
   await seedAssets(prisma);
   await seedQRCodes(prisma);
   await seedServiceRecords(prisma);

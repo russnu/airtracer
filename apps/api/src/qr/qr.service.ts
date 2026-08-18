@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -20,8 +21,7 @@ export class QrService {
     return `${baseUrl}/qr/${token}`;
   }
   //-------------------------------------------------------------//
-  // Create a QR code for an asset.
-  async createForAsset(assetId: string) {
+  private async verifyAssetOwnership(assetId: string, userId: string) {
     const asset = await this.prisma.asset.findUnique({
       where: {
         id: assetId,
@@ -34,6 +34,44 @@ export class QrService {
     if (!asset) {
       throw new NotFoundException('Asset not found');
     }
+
+    if (asset.ownerId !== userId) {
+      throw new ForbiddenException('You do not own this asset.');
+    }
+
+    return asset;
+  }
+  //-------------------------------------------------------------//
+  private async verifyQrOwnership(token: string, userId: string) {
+    const qrCode = await this.prisma.qRCode.findUnique({
+      where: {
+        token,
+      },
+      include: {
+        asset: {
+          select: {
+            ownerId: true,
+          },
+        },
+      },
+    });
+
+    if (!qrCode) {
+      throw new NotFoundException('QR code not found');
+    }
+
+    if (qrCode.asset.ownerId !== userId) {
+      throw new ForbiddenException(
+        'You do not own the asset associated with this QR code',
+      );
+    }
+
+    return qrCode;
+  }
+  //-------------------------------------------------------------//
+  // Create a QR code for an asset.
+  async createForAsset(assetId: string, userId: string) {
+    const asset = await this.verifyAssetOwnership(assetId, userId);
 
     if (asset.qrCode) {
       throw new ConflictException('This asset already has a QR code');
@@ -51,12 +89,10 @@ export class QrService {
       },
     });
 
-    const url = this.buildQrUrl(qrCode.token);
-
     return {
       id: qrCode.id,
       token: qrCode.token,
-      url,
+      url: this.buildQrUrl(qrCode.token),
       asset: qrCode.asset,
     };
   }
@@ -102,16 +138,8 @@ export class QrService {
   }
   //-------------------------------------------------------------//
   // Deactivate a QR code.
-  async deactivate(token: string) {
-    const qrCode = await this.prisma.qRCode.findUnique({
-      where: {
-        token,
-      },
-    });
-
-    if (!qrCode) {
-      throw new NotFoundException('QR code not found');
-    }
+  async deactivate(token: string, userId: string) {
+    await this.verifyQrOwnership(token, userId);
 
     return this.prisma.qRCode.update({
       where: {
@@ -124,16 +152,8 @@ export class QrService {
   }
   //-------------------------------------------------------------//
   // Activate an existing QR code.
-  async activate(token: string) {
-    const qrCode = await this.prisma.qRCode.findUnique({
-      where: {
-        token,
-      },
-    });
-
-    if (!qrCode) {
-      throw new NotFoundException('QR code not found');
-    }
+  async activate(token: string, userId: string) {
+    await this.verifyQrOwnership(token, userId);
 
     return this.prisma.qRCode.update({
       where: {
@@ -146,7 +166,9 @@ export class QrService {
   }
   //-------------------------------------------------------------//
   // Regenerate an asset's QR code. The old token becomes invalid.
-  async regenerateForAsset(assetId: string) {
+  async regenerateForAsset(assetId: string, userId: string) {
+    await this.verifyAssetOwnership(assetId, userId);
+
     const qrCode = await this.prisma.qRCode.findUnique({
       where: {
         assetId,
@@ -173,12 +195,10 @@ export class QrService {
       },
     });
 
-    const url = this.buildQrUrl(updatedQrCode.token);
-
     return {
       id: updatedQrCode.id,
       token: updatedQrCode.token,
-      url,
+      url: this.buildQrUrl(updatedQrCode.token),
       asset: updatedQrCode.asset,
     };
   }

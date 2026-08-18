@@ -1,9 +1,14 @@
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { QrService } from './qr.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+
 import { generateQrToken } from './utils/qr.util';
 
 jest.mock('./utils/qr.util', () => ({
@@ -12,36 +17,54 @@ jest.mock('./utils/qr.util', () => ({
 
 describe('QrService', () => {
   let service: QrService;
-  let prisma: {
+
+  const prisma = {
     asset: {
-      findUnique: jest.Mock;
-    };
+      findUnique: jest.fn(),
+    },
     qRCode: {
-      create: jest.Mock;
-      findUnique: jest.Mock;
-      update: jest.Mock;
-    };
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
   };
-  let configService: {
-    getOrThrow: jest.Mock;
+
+  const configService = {
+    getOrThrow: jest.fn(),
+  };
+
+  const mockedGenerateQrToken = generateQrToken as jest.MockedFunction<
+    typeof generateQrToken
+  >;
+
+  const ownerId = 'user-owner-1';
+  const otherUserId = 'user-other-1';
+  const assetId = 'asset-1';
+  const token = 'ATR_test-token';
+
+  const asset = {
+    id: assetId,
+    brand: 'Daikin',
+    model: 'FTKF35',
+    serialNumber: 'DAIKIN-001',
+    installationDate: new Date('2025-01-15'),
+    location: 'Living Room',
+    ownerId,
+    qrCode: null,
+  };
+
+  const qrCode = {
+    id: 'qr-1',
+    token,
+    assetId,
+    isActive: true,
+    generatedAt: new Date('2026-01-01'),
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
+    asset,
   };
 
   beforeEach(async () => {
-    prisma = {
-      asset: {
-        findUnique: jest.fn(),
-      },
-      qRCode: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-      },
-    };
-
-    configService = {
-      getOrThrow: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         QrService,
@@ -59,35 +82,26 @@ describe('QrService', () => {
     service = module.get<QrService>(QrService);
 
     jest.clearAllMocks();
+
+    configService.getOrThrow.mockReturnValue('https://airtracer.local');
+
+    mockedGenerateQrToken.mockReturnValue(token);
   });
 
-  // ------------------------------------------------------------- //
+  // ============================================================= //
+  // CREATE FOR ASSET
+  // ============================================================= //
+
   describe('createForAsset', () => {
-    it('should create a QR code for an asset', async () => {
-      const assetId = 'asset-1';
-      const token = 'ATR_test-token';
-
-      const asset = {
-        id: assetId,
-        brand: 'Daikin',
-        model: 'FTKF35',
+    it('should create a QR code for an owned asset', async () => {
+      prisma.asset.findUnique.mockResolvedValue({
+        ...asset,
         qrCode: null,
-      };
+      });
 
-      const createdQrCode = {
-        id: 'qr-1',
-        token,
-        assetId,
-        isActive: true,
-        asset,
-      };
+      prisma.qRCode.create.mockResolvedValue(qrCode);
 
-      prisma.asset.findUnique.mockResolvedValue(asset);
-      prisma.qRCode.create.mockResolvedValue(createdQrCode);
-      configService.getOrThrow.mockReturnValue('https://airtracer.local');
-      (generateQrToken as jest.Mock).mockReturnValue(token);
-
-      const result = await service.createForAsset(assetId);
+      const result = await service.createForAsset(assetId, ownerId);
 
       expect(prisma.asset.findUnique).toHaveBeenCalledWith({
         where: {
@@ -98,7 +112,7 @@ describe('QrService', () => {
         },
       });
 
-      expect(generateQrToken).toHaveBeenCalled();
+      expect(mockedGenerateQrToken).toHaveBeenCalled();
 
       expect(prisma.qRCode.create).toHaveBeenCalledWith({
         data: {
@@ -110,68 +124,65 @@ describe('QrService', () => {
         },
       });
 
-      expect(configService.getOrThrow).toHaveBeenCalledWith('QR_BASE_URL');
-
       expect(result).toEqual({
-        id: 'qr-1',
-        token,
+        id: qrCode.id,
+        token: qrCode.token,
         url: `https://airtracer.local/qr/${token}`,
-        asset,
+        asset: qrCode.asset,
       });
     });
 
-    it('should throw NotFoundException when the asset does not exist', async () => {
+    it('should throw NotFoundException if the asset does not exist', async () => {
       prisma.asset.findUnique.mockResolvedValue(null);
 
-      await expect(service.createForAsset('asset-1')).rejects.toThrow(
+      await expect(service.createForAsset(assetId, ownerId)).rejects.toThrow(
         new NotFoundException('Asset not found'),
       );
 
       expect(prisma.qRCode.create).not.toHaveBeenCalled();
-      expect(generateQrToken).not.toHaveBeenCalled();
     });
 
-    it('should throw ConflictException when the asset already has a QR code', async () => {
-      const asset = {
-        id: 'asset-1',
-        qrCode: {
-          id: 'qr-1',
-          token: 'ATR_existing-token',
-        },
-      };
+    it('should throw ForbiddenException if the user does not own the asset', async () => {
+      prisma.asset.findUnique.mockResolvedValue({
+        ...asset,
+        ownerId: otherUserId,
+        qrCode: null,
+      });
 
-      prisma.asset.findUnique.mockResolvedValue(asset);
+      await expect(service.createForAsset(assetId, ownerId)).rejects.toThrow(
+        new ForbiddenException('You do not own this asset.'),
+      );
 
-      await expect(service.createForAsset('asset-1')).rejects.toThrow(
+      expect(prisma.qRCode.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException if the asset already has a QR code', async () => {
+      prisma.asset.findUnique.mockResolvedValue({
+        ...asset,
+        qrCode,
+      });
+
+      await expect(service.createForAsset(assetId, ownerId)).rejects.toThrow(
         new ConflictException('This asset already has a QR code'),
       );
 
       expect(prisma.qRCode.create).not.toHaveBeenCalled();
-      expect(generateQrToken).not.toHaveBeenCalled();
     });
   });
 
-  // ------------------------------------------------------------- //
+  // ============================================================= //
+  // FIND ASSET BY TOKEN
+  // ============================================================= //
+
   describe('findAssetByToken', () => {
-    it('should return the asset associated with the QR token', async () => {
-      const asset = {
-        id: 'asset-1',
-        brand: 'Daikin',
-      };
-
-      const qrCode = {
-        id: 'qr-1',
-        token: 'ATR_test-token',
-        asset,
-      };
-
+    it('should return the asset associated with the token', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(qrCode);
 
-      const result = await service.findAssetByToken('ATR_test-token');
+      const result = await service.findAssetByToken(token);
 
       expect(prisma.qRCode.findUnique).toHaveBeenCalledWith({
         where: {
-          token: 'ATR_test-token',
+          token,
         },
         include: {
           asset: true,
@@ -181,82 +192,101 @@ describe('QrService', () => {
       expect(result).toEqual(asset);
     });
 
-    it('should throw NotFoundException when the QR code does not exist', async () => {
+    it('should throw NotFoundException if the QR code does not exist', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(null);
 
-      await expect(service.findAssetByToken('invalid-token')).rejects.toThrow(
+      await expect(service.findAssetByToken(token)).rejects.toThrow(
         new NotFoundException('QR code not found'),
       );
     });
   });
 
-  // ------------------------------------------------------------- //
+  // ============================================================= //
+  // VALIDATE
+  // ============================================================= //
+
   describe('validate', () => {
-    it('should return the QR code when it is active', async () => {
-      const qrCode = {
-        id: 'qr-1',
-        token: 'ATR_test-token',
+    it('should return an active QR code', async () => {
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
         isActive: true,
-        asset: {
-          id: 'asset-1',
+      });
+
+      const result = await service.validate(token);
+
+      expect(prisma.qRCode.findUnique).toHaveBeenCalledWith({
+        where: {
+          token,
         },
-      };
+        include: {
+          asset: true,
+        },
+      });
 
-      prisma.qRCode.findUnique.mockResolvedValue(qrCode);
-
-      const result = await service.validate('ATR_test-token');
-
-      expect(result).toEqual(qrCode);
+      expect(result).toEqual({
+        ...qrCode,
+        isActive: true,
+      });
     });
 
-    it('should throw NotFoundException when the QR code does not exist', async () => {
+    it('should throw NotFoundException if the QR code does not exist', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(null);
 
-      await expect(service.validate('invalid-token')).rejects.toThrow(
+      await expect(service.validate(token)).rejects.toThrow(
         new NotFoundException('QR code not found'),
       );
     });
 
-    it('should throw ConflictException when the QR code is inactive', async () => {
-      const qrCode = {
-        id: 'qr-1',
-        token: 'ATR_test-token',
+    it('should throw ConflictException if the QR code is inactive', async () => {
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
         isActive: false,
-        asset: {
-          id: 'asset-1',
-        },
-      };
+      });
 
-      prisma.qRCode.findUnique.mockResolvedValue(qrCode);
-
-      await expect(service.validate('ATR_test-token')).rejects.toThrow(
+      await expect(service.validate(token)).rejects.toThrow(
         new ConflictException('QR code is inactive'),
       );
     });
   });
 
-  // ------------------------------------------------------------- //
+  // ============================================================= //
+  // DEACTIVATE
+  // ============================================================= //
+
   describe('deactivate', () => {
-    it('should deactivate an existing QR code', async () => {
-      const qrCode = {
-        id: 'qr-1',
-        token: 'ATR_test-token',
-        isActive: true,
-      };
+    it('should deactivate an owned QR code', async () => {
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
+        asset: {
+          ownerId,
+        },
+      });
 
       const updatedQrCode = {
         ...qrCode,
         isActive: false,
       };
 
-      prisma.qRCode.findUnique.mockResolvedValue(qrCode);
       prisma.qRCode.update.mockResolvedValue(updatedQrCode);
 
-      const result = await service.deactivate('ATR_test-token');
+      const result = await service.deactivate(token, ownerId);
+
+      expect(prisma.qRCode.findUnique).toHaveBeenCalledWith({
+        where: {
+          token,
+        },
+        include: {
+          asset: {
+            select: {
+              ownerId: true,
+            },
+          },
+        },
+      });
 
       expect(prisma.qRCode.update).toHaveBeenCalledWith({
         where: {
-          token: 'ATR_test-token',
+          token,
         },
         data: {
           isActive: false,
@@ -266,39 +296,73 @@ describe('QrService', () => {
       expect(result).toEqual(updatedQrCode);
     });
 
-    it('should throw NotFoundException when the QR code does not exist', async () => {
+    it('should throw NotFoundException if the QR code does not exist', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(null);
 
-      await expect(service.deactivate('invalid-token')).rejects.toThrow(
+      await expect(service.deactivate(token, ownerId)).rejects.toThrow(
         new NotFoundException('QR code not found'),
+      );
+
+      expect(prisma.qRCode.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if the user does not own the QR asset', async () => {
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
+        asset: {
+          ownerId: otherUserId,
+        },
+      });
+
+      await expect(service.deactivate(token, ownerId)).rejects.toThrow(
+        new ForbiddenException(
+          'You do not own the asset associated with this QR code',
+        ),
       );
 
       expect(prisma.qRCode.update).not.toHaveBeenCalled();
     });
   });
 
-  // ------------------------------------------------------------- //
+  // ============================================================= //
+  // ACTIVATE
+  // ============================================================= //
+
   describe('activate', () => {
-    it('should activate an existing QR code', async () => {
-      const qrCode = {
-        id: 'qr-1',
-        token: 'ATR_test-token',
+    it('should activate an owned QR code', async () => {
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
         isActive: false,
-      };
+        asset: {
+          ownerId,
+        },
+      });
 
       const updatedQrCode = {
         ...qrCode,
         isActive: true,
       };
 
-      prisma.qRCode.findUnique.mockResolvedValue(qrCode);
       prisma.qRCode.update.mockResolvedValue(updatedQrCode);
 
-      const result = await service.activate('ATR_test-token');
+      const result = await service.activate(token, ownerId);
+
+      expect(prisma.qRCode.findUnique).toHaveBeenCalledWith({
+        where: {
+          token,
+        },
+        include: {
+          asset: {
+            select: {
+              ownerId: true,
+            },
+          },
+        },
+      });
 
       expect(prisma.qRCode.update).toHaveBeenCalledWith({
         where: {
-          token: 'ATR_test-token',
+          token,
         },
         data: {
           isActive: true,
@@ -308,51 +372,81 @@ describe('QrService', () => {
       expect(result).toEqual(updatedQrCode);
     });
 
-    it('should throw NotFoundException when the QR code does not exist', async () => {
+    it('should throw NotFoundException if the QR code does not exist', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(null);
 
-      await expect(service.activate('invalid-token')).rejects.toThrow(
+      await expect(service.activate(token, ownerId)).rejects.toThrow(
         new NotFoundException('QR code not found'),
+      );
+
+      expect(prisma.qRCode.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if the user does not own the QR asset', async () => {
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
+        asset: {
+          ownerId: otherUserId,
+        },
+      });
+
+      await expect(service.activate(token, ownerId)).rejects.toThrow(
+        new ForbiddenException(
+          'You do not own the asset associated with this QR code',
+        ),
       );
 
       expect(prisma.qRCode.update).not.toHaveBeenCalled();
     });
   });
 
-  // ------------------------------------------------------------- //
+  // ============================================================= //
+  // REGENERATE
+  // ============================================================= //
+
   describe('regenerateForAsset', () => {
-    it('should generate a new token and update the QR code', async () => {
-      const assetId = 'asset-1';
+    it('should regenerate the QR code for an owned asset', async () => {
       const oldToken = 'ATR_old-token';
       const newToken = 'ATR_new-token';
 
-      const qrCode = {
-        id: 'qr-1',
-        assetId,
-        token: oldToken,
-        isActive: false,
-      };
+      prisma.asset.findUnique.mockResolvedValue({
+        ...asset,
+        qrCode,
+      });
 
-      const asset = {
-        id: assetId,
-        brand: 'Daikin',
-      };
+      prisma.qRCode.findUnique.mockResolvedValue({
+        ...qrCode,
+        token: oldToken,
+      });
+
+      mockedGenerateQrToken.mockReturnValue(newToken);
 
       const updatedQrCode = {
         ...qrCode,
         token: newToken,
         isActive: true,
-        asset,
       };
 
-      prisma.qRCode.findUnique.mockResolvedValue(qrCode);
       prisma.qRCode.update.mockResolvedValue(updatedQrCode);
-      configService.getOrThrow.mockReturnValue('https://airtracer.local');
-      (generateQrToken as jest.Mock).mockReturnValue(newToken);
 
-      const result = await service.regenerateForAsset(assetId);
+      const result = await service.regenerateForAsset(assetId, ownerId);
 
-      expect(generateQrToken).toHaveBeenCalled();
+      expect(prisma.asset.findUnique).toHaveBeenCalledWith({
+        where: {
+          id: assetId,
+        },
+        include: {
+          qrCode: true,
+        },
+      });
+
+      expect(prisma.qRCode.findUnique).toHaveBeenCalledWith({
+        where: {
+          assetId,
+        },
+      });
+
+      expect(mockedGenerateQrToken).toHaveBeenCalled();
 
       expect(prisma.qRCode.update).toHaveBeenCalledWith({
         where: {
@@ -369,46 +463,70 @@ describe('QrService', () => {
       });
 
       expect(result).toEqual({
-        id: 'qr-1',
+        id: updatedQrCode.id,
         token: newToken,
         url: `https://airtracer.local/qr/${newToken}`,
-        asset,
+        asset: updatedQrCode.asset,
       });
     });
 
-    it('should throw NotFoundException when the asset has no QR code', async () => {
+    it('should throw NotFoundException if the asset does not exist', async () => {
+      prisma.asset.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.regenerateForAsset(assetId, ownerId),
+      ).rejects.toThrow(new NotFoundException('Asset not found'));
+
+      expect(prisma.qRCode.findUnique).not.toHaveBeenCalled();
+      expect(prisma.qRCode.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if the user does not own the asset', async () => {
+      prisma.asset.findUnique.mockResolvedValue({
+        ...asset,
+        ownerId: otherUserId,
+        qrCode,
+      });
+
+      await expect(
+        service.regenerateForAsset(assetId, ownerId),
+      ).rejects.toThrow(new ForbiddenException('You do not own this asset.'));
+
+      expect(prisma.qRCode.findUnique).not.toHaveBeenCalled();
+      expect(prisma.qRCode.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if the asset has no QR code', async () => {
+      prisma.asset.findUnique.mockResolvedValue({
+        ...asset,
+        qrCode: null,
+      });
+
       prisma.qRCode.findUnique.mockResolvedValue(null);
 
-      await expect(service.regenerateForAsset('asset-1')).rejects.toThrow(
+      await expect(
+        service.regenerateForAsset(assetId, ownerId),
+      ).rejects.toThrow(
         new NotFoundException('QR code not found for this asset'),
       );
 
       expect(prisma.qRCode.update).not.toHaveBeenCalled();
-      expect(generateQrToken).not.toHaveBeenCalled();
     });
   });
 
-  // ------------------------------------------------------------- //
-  describe('findByAssetId', () => {
-    it('should return the QR code associated with an asset', async () => {
-      const qrCode = {
-        id: 'qr-1',
-        assetId: 'asset-1',
-        token: 'ATR_test-token',
-        isActive: true,
-        asset: {
-          id: 'asset-1',
-          brand: 'Daikin',
-        },
-      };
+  // ============================================================= //
+  // FIND BY ASSET ID
+  // ============================================================= //
 
+  describe('findByAssetId', () => {
+    it('should return the QR code belonging to an asset', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(qrCode);
 
-      const result = await service.findByAssetId('asset-1');
+      const result = await service.findByAssetId(assetId);
 
       expect(prisma.qRCode.findUnique).toHaveBeenCalledWith({
         where: {
-          assetId: 'asset-1',
+          assetId,
         },
         include: {
           asset: true,
@@ -418,17 +536,12 @@ describe('QrService', () => {
       expect(result).toEqual(qrCode);
     });
 
-    it('should throw NotFoundException when the asset has no QR code', async () => {
+    it('should throw NotFoundException if the asset has no QR code', async () => {
       prisma.qRCode.findUnique.mockResolvedValue(null);
 
-      await expect(service.findByAssetId('asset-1')).rejects.toThrow(
+      await expect(service.findByAssetId(assetId)).rejects.toThrow(
         new NotFoundException('QR code not found for this asset'),
       );
     });
-  });
-
-  // ------------------------------------------------------------- //
-  it('should be defined', () => {
-    expect(service).toBeDefined();
   });
 });

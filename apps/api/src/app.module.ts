@@ -13,6 +13,8 @@ import { AssetsModule } from './assets/assets.module';
 import { ServiceRecordsService } from './service-records/service-records.service';
 import { ServiceRecordsController } from './service-records/service-records.controller';
 import { ServiceRecordsModule } from './service-records/service-records.module';
+import { ServicePhotoModule } from './service-photo/service-photo.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { ServiceRecordsModule } from './service-records/service-records.module';
     QrModule,
     AssetsModule,
     ServiceRecordsModule,
+    ServicePhotoModule,
+    StorageModule,
   ],
   providers: [
     {

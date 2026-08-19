@@ -22,12 +22,7 @@ export class QrController {
   @Public()
   @Get(':token')
   findByToken(@Param('token') token: string) {
-    return this.qrService.validate(token);
-  }
-  //-------------------------------------------------------------//
-  @Get('assets/:assetId')
-  findByAssetId(@Param('assetId') assetId: string) {
-    return this.qrService.findByAssetId(assetId);
+    return this.qrService.getPublicPassport(token);
   }
   //-------------------------------------------------------------//
   @Roles(RoleName.OWNER)

@@ -188,17 +188,19 @@ model ServiceRecord {
   serviceType String
   description String?
 
-  // // Operating Measurements
-  // dont implement right now
-  // suctionPressure   Float?
-  // dischargePressure Float?
+  // Operating Measurements
+  suctionPressure   Float?
+  dischargePressure Float?
 
-  // electricalCurrent Float?
-  // voltage           Float?
+  current Float?
+  voltage Float?
 
-  // // Condition / Findings
-  // findings        String?
-  // recommendations String?
+  // Condition / Findings
+  findings        String?
+  recommendations String?
+
+  // Service Photos 
+  photos ServicePhoto[]
 
   // Audit
   createdAt DateTime @default(now())
@@ -207,6 +209,29 @@ model ServiceRecord {
   @@index([assetId])
   @@index([technicianId])
   @@index([serviceDate])
+}
+
+//==========================================================================//
+
+model ServicePhoto {
+  id String @id @default(cuid())
+
+  //Service Record 
+  serviceRecordId String
+  serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
+  // File Information
+  fileName        String
+  storageKey      String
+  mimeType        String?
+  fileSize        Int?
+
+  // Photo Information
+  caption String?
+
+  // Audit
+  uploadedAt DateTime @default(now())
+
+  @@index([serviceRecordId])
 }
 
 //==========================================================================//

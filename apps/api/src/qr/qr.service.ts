@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateQrToken } from './utils/qr.util';
+import { PublicPassportResponseDto } from './dto/public-passport-response.dto';
 
 @Injectable()
 export class QrService {
@@ -115,14 +116,27 @@ export class QrService {
     return qrCode.asset;
   }
   //-------------------------------------------------------------//
-  // Find the QR record and validate that it is active.
-  async validate(token: string) {
+  // Retrieve service history for public display
+  async getPublicPassport(token: string): Promise<PublicPassportResponseDto> {
     const qrCode = await this.prisma.qRCode.findUnique({
       where: {
         token,
       },
       include: {
-        asset: true,
+        asset: {
+          include: {
+            equipmentType: true,
+            serviceRecords: {
+              orderBy: {
+                serviceDate: 'desc',
+              },
+              include: {
+                technician: true,
+                photos: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -134,7 +148,39 @@ export class QrService {
       throw new ConflictException('QR code is inactive');
     }
 
-    return qrCode;
+    return {
+      asset: {
+        id: qrCode.asset.id,
+        brand: qrCode.asset.brand,
+        model: qrCode.asset.model,
+        serialNumber: qrCode.asset.serialNumber,
+        equipmentType: qrCode.asset.equipmentType.name,
+        installationDate: qrCode.asset.installationDate,
+        location: qrCode.asset.location,
+      },
+
+      serviceHistory: qrCode.asset.serviceRecords.map((record) => ({
+        id: record.id,
+        serviceDate: record.serviceDate,
+        serviceType: record.serviceType,
+        description: record.description,
+        measurements: {
+          suctionPressure: record.suctionPressure,
+          dischargePressure: record.dischargePressure,
+          current: record.current,
+          voltage: record.voltage,
+        },
+
+        findings: record.findings,
+        recommendations: record.recommendations,
+
+        technician: record.technician
+          ? {
+              name: `${record.technician.firstName} ${record.technician.lastName}`,
+            }
+          : null,
+      })),
+    };
   }
   //-------------------------------------------------------------//
   // Deactivate a QR code.
@@ -201,23 +247,5 @@ export class QrService {
       url: this.buildQrUrl(updatedQrCode.token),
       asset: updatedQrCode.asset,
     };
-  }
-  //-------------------------------------------------------------//
-  // Get the QR record belonging to an asset.
-  async findByAssetId(assetId: string) {
-    const qrCode = await this.prisma.qRCode.findUnique({
-      where: {
-        assetId,
-      },
-      include: {
-        asset: true,
-      },
-    });
-
-    if (!qrCode) {
-      throw new NotFoundException('QR code not found for this asset');
-    }
-
-    return qrCode;
   }
 }

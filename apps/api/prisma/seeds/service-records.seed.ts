@@ -7,50 +7,90 @@ export async function seedServiceRecords(prisma: PrismaClient) {
     },
   });
 
-  const assets = await prisma.asset.findMany({
-    orderBy: {
-      serialNumber: 'asc',
+  const daikin = await prisma.asset.findUniqueOrThrow({
+    where: {
+      serialNumber: 'DAIKIN-DEMO-000001',
     },
   });
 
-  if (assets.length < 3) {
-    throw new Error('Expected at least 3 seeded assets');
-  }
+  const panasonic = await prisma.asset.findUniqueOrThrow({
+    where: {
+      serialNumber: 'PANASONIC-DEMO-000001',
+    },
+  });
+
+  const lg = await prisma.asset.findUniqueOrThrow({
+    where: {
+      serialNumber: 'LG-DEMO-000001',
+    },
+  });
 
   const serviceRecords = [
     {
-      assetId: assets[0].id,
+      assetId: daikin.id,
       technicianId: technician.id,
       serviceDate: new Date('2025-07-15'),
-      serviceType: 'PREVENTIVE_MAINTENANCE',
-      description: 'Routine cleaning and inspection.',
+      serviceType: 'Preventive Maintenance',
+      description:
+        'Routine preventive maintenance including cleaning, inspection, and performance testing.',
+      suctionPressure: 68.5,
+      dischargePressure: 245.0,
+      current: 4.2,
+      voltage: 230,
+      findings:
+        'Unit operating normally. Filters were moderately dirty and indoor coil had light dust accumulation.',
+      recommendations:
+        'Clean filters regularly and schedule the next preventive maintenance within six months.',
     },
     {
-      assetId: assets[0].id,
+      assetId: panasonic.id,
       technicianId: technician.id,
-      serviceDate: new Date('2026-01-15'),
-      serviceType: 'PREVENTIVE_MAINTENANCE',
-      description: 'Six-month preventive maintenance service.',
+      serviceDate: new Date('2025-08-20'),
+      serviceType: 'Inspection',
+      description:
+        'General inspection and operational testing of the air-conditioning unit.',
+      suctionPressure: 70.0,
+      dischargePressure: 238.5,
+      current: 5.1,
+      voltage: 230,
+      findings:
+        'Unit is operational. Minor dust accumulation found on the evaporator coil.',
+      recommendations:
+        'Perform coil cleaning during the next scheduled maintenance.',
     },
     {
-      assetId: assets[1].id,
+      assetId: lg.id,
       technicianId: technician.id,
       serviceDate: new Date('2025-09-10'),
-      serviceType: 'CLEANING',
-      description: 'Indoor and outdoor unit cleaning.',
-    },
-    {
-      assetId: assets[2].id,
-      technicianId: technician.id,
-      serviceDate: new Date('2026-02-20'),
-      serviceType: 'INSPECTION',
-      description: 'General operational inspection.',
+      serviceType: 'Repair',
+      description:
+        'Diagnostic inspection and repair following reported cooling performance issues.',
+      suctionPressure: 58.0,
+      dischargePressure: 220.0,
+      current: 5.8,
+      voltage: 230,
+      findings:
+        'Reduced cooling performance caused by restricted airflow from a heavily contaminated filter.',
+      recommendations:
+        'Replace or clean the air filter and monitor cooling performance after service.',
     },
   ];
 
-  await prisma.serviceRecord.createMany({
-    data: serviceRecords,
-  });
+  for (const serviceRecord of serviceRecords) {
+    const existing = await prisma.serviceRecord.findFirst({
+      where: {
+        assetId: serviceRecord.assetId,
+        serviceDate: serviceRecord.serviceDate,
+        serviceType: serviceRecord.serviceType,
+      },
+    });
+
+    if (!existing) {
+      await prisma.serviceRecord.create({
+        data: serviceRecord,
+      });
+    }
+  }
 
   console.log(`✓ Seeded ${serviceRecords.length} service records`);
 }

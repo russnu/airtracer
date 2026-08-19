@@ -6,8 +6,6 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RoleName } from '../src/roles/enums/role-name.enum';
 
-const qrBaseUrl = process.env.QR_BASE_URL;
-
 describe('QR E2E', () => {
   let app: INestApplication;
   let prisma: PrismaService;
@@ -17,11 +15,15 @@ describe('QR E2E', () => {
   const ownerEmail = `e2e-qr-owner-${Date.now()}@example.com`;
   const otherOwnerEmail = `e2e-qr-other-owner-${Date.now()}@example.com`;
 
+  const equipmentTypeName = `E2E QR Equipment ${Date.now()}`;
+
   let ownerToken: string;
   let otherOwnerToken: string;
 
   let ownerId: string;
   let otherOwnerId: string;
+
+  let equipmentTypeId: string;
 
   let assetId: string;
   let otherAssetId: string;
@@ -42,6 +44,19 @@ describe('QR E2E', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
+
+    // --------------------------------------------------------- //
+    // Create test equipment type
+    // --------------------------------------------------------- //
+
+    const equipmentType = await prisma.equipmentType.create({
+      data: {
+        name: equipmentTypeName,
+        description: 'Equipment type created for QR E2E tests.',
+      },
+    });
+
+    equipmentTypeId = equipmentType.id;
 
     // --------------------------------------------------------- //
     // Create first OWNER
@@ -82,7 +97,7 @@ describe('QR E2E', () => {
     otherOwnerId = otherOwnerResponse.body.user.id;
 
     // --------------------------------------------------------- //
-    // Create assets directly in DB
+    // Create first test asset
     // --------------------------------------------------------- //
 
     const ownerAsset = await prisma.asset.create({
@@ -93,10 +108,15 @@ describe('QR E2E', () => {
         installationDate: new Date('2025-01-15'),
         location: 'Living Room',
         ownerId,
+        equipmentTypeId,
       },
     });
 
     assetId = ownerAsset.id;
+
+    // --------------------------------------------------------- //
+    // Create second test asset
+    // --------------------------------------------------------- //
 
     const otherAsset = await prisma.asset.create({
       data: {
@@ -106,6 +126,7 @@ describe('QR E2E', () => {
         installationDate: new Date('2025-03-10'),
         location: 'Bedroom',
         ownerId: otherOwnerId,
+        equipmentTypeId,
       },
     });
 
@@ -117,8 +138,7 @@ describe('QR E2E', () => {
   // ============================================================= //
 
   afterAll(async () => {
-    // QR records must be removed before their assets because
-    // QRCode has a relation to Asset.
+    // QRCode -> Asset
     await prisma.qRCode.deleteMany({
       where: {
         assetId: {
@@ -127,6 +147,7 @@ describe('QR E2E', () => {
       },
     });
 
+    // Asset -> EquipmentType / User
     await prisma.asset.deleteMany({
       where: {
         id: {
@@ -135,11 +156,19 @@ describe('QR E2E', () => {
       },
     });
 
+    // Users
     await prisma.user.deleteMany({
       where: {
         id: {
           in: [ownerId, otherOwnerId],
         },
+      },
+    });
+
+    // EquipmentType
+    await prisma.equipmentType.delete({
+      where: {
+        id: equipmentTypeId,
       },
     });
 
@@ -166,16 +195,18 @@ describe('QR E2E', () => {
         asset: {
           id: assetId,
           ownerId,
+          equipmentTypeId,
         },
       });
 
       expect(response.body.token).toMatch(/^ATR_/);
 
-      expect(response.body.url).toBe(`${qrBaseUrl}/qr/${response.body.token}`);
+      expect(response.body.url).toBe(
+        `${process.env.QR_BASE_URL}/qr/${response.body.token}`,
+      );
 
       qrToken = response.body.token;
 
-      // Verify the QR actually exists in the database.
       const qrCode = await prisma.qRCode.findUnique({
         where: {
           assetId,
@@ -225,10 +256,8 @@ describe('QR E2E', () => {
 
     // QR-005
     it('QR-005: should reject creation for a nonexistent asset', async () => {
-      const nonexistentAssetId = 'nonexistent-asset-id';
-
       const response = await request(app.getHttpServer())
-        .post(`/qr/assets/${nonexistentAssetId}`)
+        .post('/qr/assets/nonexistent-asset-id')
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(404);
 
@@ -257,6 +286,7 @@ describe('QR E2E', () => {
       expect(response.body.asset).toMatchObject({
         id: assetId,
         ownerId,
+        equipmentTypeId,
         brand: 'Daikin',
         model: 'FTKF35',
       });
@@ -294,6 +324,7 @@ describe('QR E2E', () => {
       expect(response.body.asset).toMatchObject({
         id: assetId,
         ownerId,
+        equipmentTypeId,
       });
     });
 
@@ -351,6 +382,14 @@ describe('QR E2E', () => {
       expect(response.body.message).toBe(
         'You do not own the asset associated with this QR code',
       );
+
+      const qrCode = await prisma.qRCode.findUnique({
+        where: {
+          token: qrToken,
+        },
+      });
+
+      expect(qrCode?.isActive).toBe(false);
     });
 
     // QR-013
@@ -412,6 +451,14 @@ describe('QR E2E', () => {
       expect(response.body.message).toBe(
         'You do not own the asset associated with this QR code',
       );
+
+      const qrCode = await prisma.qRCode.findUnique({
+        where: {
+          token: qrToken,
+        },
+      });
+
+      expect(qrCode?.isActive).toBe(true);
     });
 
     // QR-017
@@ -443,18 +490,19 @@ describe('QR E2E', () => {
         asset: {
           id: assetId,
           ownerId,
+          equipmentTypeId,
         },
       });
 
       expect(response.body.token).not.toBe(oldToken);
-
       expect(response.body.token).toMatch(/^ATR_/);
 
-      expect(response.body.url).toBe(`${qrBaseUrl}/qr/${response.body.token}`);
+      expect(response.body.url).toBe(
+        `${process.env.QR_BASE_URL}/qr/${response.body.token}`,
+      );
 
       qrToken = response.body.token;
 
-      // Verify the database was updated.
       const qrCode = await prisma.qRCode.findUnique({
         where: {
           assetId,
@@ -468,10 +516,6 @@ describe('QR E2E', () => {
 
     // QR-019
     it('QR-019: should invalidate the old token after regeneration', async () => {
-      const oldToken = 'ATR_this-token-does-not-exist';
-
-      // This test is intentionally handled through the actual
-      // regeneration flow below.
       const currentQr = await prisma.qRCode.findUnique({
         where: {
           assetId,
@@ -480,18 +524,24 @@ describe('QR E2E', () => {
 
       expect(currentQr).not.toBeNull();
 
-      const tokenBeforeRegeneration = currentQr!.token;
+      const oldToken = currentQr!.token;
 
-      await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post(`/qr/assets/${assetId}/regenerate`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .expect(201);
 
-      const response = await request(app.getHttpServer())
-        .get(`/qr/${tokenBeforeRegeneration}`)
+      const newToken = response.body.token;
+
+      expect(newToken).not.toBe(oldToken);
+
+      const oldTokenResponse = await request(app.getHttpServer())
+        .get(`/qr/${oldToken}`)
         .expect(404);
 
-      expect(response.body.message).toBe('QR code not found');
+      expect(oldTokenResponse.body.message).toBe('QR code not found');
+
+      qrToken = newToken;
 
       const updatedQr = await prisma.qRCode.findUnique({
         where: {
@@ -500,16 +550,12 @@ describe('QR E2E', () => {
       });
 
       expect(updatedQr).not.toBeNull();
-
-      qrToken = updatedQr!.token;
-
-      // Keep the variable to make it clear that the old token
-      // is intentionally invalidated.
-      expect(tokenBeforeRegeneration).not.toBe(oldToken);
+      expect(updatedQr?.token).toBe(newToken);
+      expect(updatedQr?.isActive).toBe(true);
     });
 
     // QR-020
-    it('QR-020: should reject regeneration by another owner', async () => {
+    it("QR-020: should reject regeneration by another owner's asset", async () => {
       const currentQr = await prisma.qRCode.findUnique({
         where: {
           assetId,

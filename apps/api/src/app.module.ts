@@ -10,6 +10,9 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { QrModule } from './qr/qr.module';
 import { AssetsModule } from './assets/assets.module';
+import { ServiceRecordsService } from './service-records/service-records.service';
+import { ServiceRecordsController } from './service-records/service-records.controller';
+import { ServiceRecordsModule } from './service-records/service-records.module';
 
 @Module({
   imports: [
@@ -21,6 +24,7 @@ import { AssetsModule } from './assets/assets.module';
     AuthModule,
     QrModule,
     AssetsModule,
+    ServiceRecordsModule,
   ],
   providers: [
     {
@@ -31,6 +35,8 @@ import { AssetsModule } from './assets/assets.module';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    ServiceRecordsService,
   ],
+  controllers: [ServiceRecordsController],
 })
 export class AppModule {}

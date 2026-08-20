@@ -15,6 +15,7 @@ import { ServiceRecordsController } from './service-records/service-records.cont
 import { ServiceRecordsModule } from './service-records/service-records.module';
 import { ServicePhotoModule } from './service-photo/service-photo.module';
 import { StorageModule } from './storage/storage.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { StorageModule } from './storage/storage.module';
     ServiceRecordsModule,
     ServicePhotoModule,
     StorageModule,
+    AuditModule,
   ],
   providers: [
     {

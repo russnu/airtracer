@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider     = "prisma-client"
   output       = "../generated/prisma"
@@ -11,6 +8,43 @@ datasource db {
   provider = "postgresql"
 }
 
+//==========================================================================//
+// ENUMS
+//==========================================================================//
+
+enum Event {
+  // Asset
+  ASSET_CREATED
+  ASSET_UPDATED
+  ASSET_ASSIGNED
+  ASSET_OWNERSHIP_CHANGED
+  ASSET_DELETED
+
+  // Service Record
+  SERVICE_RECORD_CREATED
+  SERVICE_RECORD_UPDATED
+  SERVICE_RECORD_COMPLETED
+  SERVICE_RECORD_CANCELLED
+
+  // QR Code
+  QR_GENERATED
+  QR_REGENERATED
+  QR_DEACTIVATED
+
+  // Service Photos
+  SERVICE_PHOTO_ADDED
+  SERVICE_PHOTO_REMOVED
+}
+
+enum ServiceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+//==========================================================================//
+// MODELS
 //==========================================================================//
 model User {
   id String @id @default(cuid())
@@ -40,9 +74,9 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-
   serviceRecords ServiceRecord[]
   assetsOwned    Asset[]
+  auditLogs      AuditLog[]
 }
 
 //==========================================================================//
@@ -143,8 +177,9 @@ model Asset {
   serviceRecords ServiceRecord[]
 
   // Audit
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  auditLogs AuditLog[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 
   @@index([ownerId])
   @@index([equipmentTypeId])
@@ -187,6 +222,7 @@ model ServiceRecord {
   serviceDate DateTime
   serviceType String
   description String?
+  status      ServiceStatus @default(PENDING)
 
   // Operating Measurements
   suctionPressure   Float?
@@ -219,12 +255,12 @@ model ServicePhoto {
   //Service Record 
   serviceRecordId String
   serviceRecord   ServiceRecord @relation(fields: [serviceRecordId], references: [id], onDelete: Cascade)
-  
+
   // File Information
-  fileName        String
-  storageKey      String
-  mimeType        String?
-  fileSize        Int?
+  fileName   String
+  storageKey String
+  mimeType   String?
+  fileSize   Int?
 
   // Photo Information
   caption String?
@@ -236,3 +272,32 @@ model ServicePhoto {
 }
 
 //==========================================================================//
+model AuditLog {
+  id String @id @default(cuid())
+
+  // Who performed the event
+  actorId String?
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  // What happened
+  event Event
+
+  // What asset's lifecycle this event belongs to
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id])
+
+  // Event data
+  payload Json?
+
+  // Tamper-evident hash chain
+  previousHash String?
+  hash         String  @unique
+
+  // Timestamp
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([event])
+  @@index([assetId, createdAt])
+  @@index([createdAt])
+}

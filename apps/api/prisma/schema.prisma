@@ -18,7 +18,7 @@ enum Event {
   ASSET_UPDATED
   ASSET_ASSIGNED
   ASSET_OWNERSHIP_CHANGED
-  ASSET_DELETED
+  ASSET_DEACTIVATED
 
   // Service Record
   SERVICE_RECORD_CREATED
@@ -155,7 +155,7 @@ model Asset {
   brand        String
   model        String
   serialNumber String? @unique
-
+  isActive     Boolean @default(true)
   // Equipment Classification
 
   equipmentTypeId String
@@ -284,7 +284,7 @@ model AuditLog {
 
   // What asset's lifecycle this event belongs to
   assetId String
-  asset   Asset  @relation(fields: [assetId], references: [id])
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
 
   // Event data
   payload Json?

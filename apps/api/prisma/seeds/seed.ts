@@ -8,6 +8,7 @@ import { seedAssets } from './assets.seed';
 import { seedQRCodes } from './qr.seed';
 import { seedServiceRecords } from './service-records.seed';
 import { seedEquipmentTypes } from './equipment-type.seed';
+import { seedAuditLogs } from './audit-logs.seed';
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -31,6 +32,7 @@ async function main() {
   await seedAssets(prisma);
   await seedQRCodes(prisma);
   await seedServiceRecords(prisma);
+  await seedAuditLogs(prisma);
 
   console.log('\n✅ Database seed completed successfully.');
 }

@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuditLogInput } from './types/create-audit-log.type';
+import { Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class AuditService {
@@ -14,7 +15,10 @@ export class AuditService {
     return createHash('sha256').update(JSON.stringify(data)).digest('hex');
   }
   //-------------------------------------------------------------//
-  async log(input: CreateAuditLogInput) {
+  async log(
+    input: CreateAuditLogInput,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
     const previousAudit = await this.prisma.auditLog.findFirst({
       where: {
         assetId: input.assetId,
@@ -38,7 +42,7 @@ export class AuditService {
 
     const hash = this.generateHash(hashPayload);
 
-    return this.prisma.auditLog.create({
+    return tx.auditLog.create({
       data: {
         actorId: input.actorId,
         assetId: input.assetId,

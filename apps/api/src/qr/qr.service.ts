@@ -8,11 +8,14 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { generateQrToken } from './utils/qr.util';
 import { PublicPassportResponseDto } from './dto/public-passport-response.dto';
+import { Event } from '../../generated/prisma/client';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class QrService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
     private readonly configService: ConfigService,
   ) {}
   //-------------------------------------------------------------//
@@ -80,22 +83,38 @@ export class QrService {
 
     const token = generateQrToken();
 
-    const qrCode = await this.prisma.qRCode.create({
-      data: {
-        token,
-        assetId,
-      },
-      include: {
-        asset: true,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const qrCode = await tx.qRCode.create({
+        data: {
+          token,
+          assetId,
+        },
+        include: {
+          asset: true,
+        },
+      });
 
-    return {
-      id: qrCode.id,
-      token: qrCode.token,
-      url: this.buildQrUrl(qrCode.token),
-      asset: qrCode.asset,
-    };
+      await this.auditService.log(
+        {
+          actorId: userId,
+          assetId,
+          event: Event.QR_GENERATED,
+          payload: {
+            qrCodeId: qrCode.id,
+            token: qrCode.token,
+            generatedAt: qrCode.generatedAt.toISOString(),
+          },
+        },
+        tx,
+      );
+
+      return {
+        id: qrCode.id,
+        token: qrCode.token,
+        url: this.buildQrUrl(qrCode.token),
+        asset: qrCode.asset,
+      };
+    });
   }
   //-------------------------------------------------------------//
   // Find an asset using the token encoded in the QR code.
@@ -185,21 +204,46 @@ export class QrService {
   //-------------------------------------------------------------//
   // Deactivate a QR code.
   async deactivate(token: string, userId: string) {
-    await this.verifyQrOwnership(token, userId);
+    const qrCode = await this.verifyQrOwnership(token, userId);
 
-    return this.prisma.qRCode.update({
-      where: {
-        token,
-      },
-      data: {
-        isActive: false,
-      },
+    if (!qrCode.isActive) {
+      throw new ConflictException('QR code is already inactive');
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const updatedQr = this.prisma.qRCode.update({
+        where: {
+          token,
+        },
+        data: {
+          isActive: false,
+        },
+      });
+
+      await this.auditService.log(
+        {
+          actorId: userId,
+          assetId: qrCode.assetId,
+          event: Event.QR_DEACTIVATED,
+          payload: {
+            qrCodeId: qrCode.id,
+            previousStatus: true,
+            newStatus: false,
+          },
+        },
+        tx,
+      );
+
+      return updatedQr;
     });
   }
   //-------------------------------------------------------------//
   // Activate an existing QR code.
   async activate(token: string, userId: string) {
-    await this.verifyQrOwnership(token, userId);
+    const qrCode = await this.verifyQrOwnership(token, userId);
+
+    if (qrCode.isActive) {
+      throw new ConflictException('QR code is already active');
+    }
 
     return this.prisma.qRCode.update({
       where: {
@@ -225,27 +269,44 @@ export class QrService {
       throw new NotFoundException('QR code not found for this asset');
     }
 
+    const previousToken = qrCode.token;
     const token = generateQrToken();
 
-    const updatedQrCode = await this.prisma.qRCode.update({
-      where: {
-        assetId,
-      },
-      data: {
-        token,
-        isActive: true,
-        generatedAt: new Date(),
-      },
-      include: {
-        asset: true,
-      },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const updatedQrCode = await tx.qRCode.update({
+        where: {
+          assetId,
+        },
+        data: {
+          token,
+          isActive: true,
+          generatedAt: new Date(),
+        },
+        include: {
+          asset: true,
+        },
+      });
 
-    return {
-      id: updatedQrCode.id,
-      token: updatedQrCode.token,
-      url: this.buildQrUrl(updatedQrCode.token),
-      asset: updatedQrCode.asset,
-    };
+      await this.auditService.log(
+        {
+          actorId: userId,
+          assetId,
+          event: Event.QR_REGENERATED,
+          payload: {
+            qrCodeId: qrCode.id,
+            previousToken,
+            newToken: token,
+          },
+        },
+        tx,
+      );
+
+      return {
+        id: updatedQrCode.id,
+        token: updatedQrCode.token,
+        url: this.buildQrUrl(updatedQrCode.token),
+        asset: updatedQrCode.asset,
+      };
+    });
   }
 }

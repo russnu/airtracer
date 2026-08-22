@@ -12,10 +12,4 @@ export class UsersController {
   findAll() {
     return this.usersService.findAll();
   }
-  //-------------------------------------------------------------//
-  // @Get('email/:email')
-  // findByEmail(@Param('email') email: string) {
-  //   return this.usersService.findByEmail(email);
-  // }
-  //-------------------------------------------------------------//
 }

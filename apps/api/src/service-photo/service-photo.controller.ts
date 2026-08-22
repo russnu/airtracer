@@ -15,6 +15,8 @@ import { memoryStorage } from 'multer';
 import { ServicePhotoService } from './service-photo.service';
 import { CreateServicePhotoDto } from './dto/create-service-photo.dto';
 import { UpdateServicePhotoDto } from './dto/update-service-photo.dto';
+import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('service-photo')
 export class ServicePhotoController {
@@ -30,9 +32,10 @@ export class ServicePhotoController {
   upload(
     @Param('serviceRecordId') serviceRecordId: string,
     @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateServicePhotoDto,
   ) {
-    return this.servicePhotoService.upload(serviceRecordId, file, dto);
+    return this.servicePhotoService.upload(serviceRecordId, user.id, file, dto);
   }
 
   //-------------------------------------------------------------//
@@ -52,7 +55,7 @@ export class ServicePhotoController {
 
   //-------------------------------------------------------------//
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.servicePhotoService.remove(id);
+  remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.servicePhotoService.remove(id, user.id);
   }
 }

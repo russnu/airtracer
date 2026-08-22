@@ -48,6 +48,12 @@ export class AssetsController {
   }
   //-------------------------------------------------------------//
   @Roles(RoleName.OWNER)
+  @Patch(':id/deactivate')
+  deactivate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.assetsService.deactivate(id, user.id);
+  }
+  //-------------------------------------------------------------//
+  @Roles(RoleName.OWNER)
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.assetsService.remove(id, user.id);

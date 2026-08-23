@@ -51,6 +51,9 @@ export class AssetsService {
           model: dto.model,
           serialNumber: dto.serialNumber,
           equipmentTypeId: dto.equipmentTypeId,
+          refrigerant: dto.refrigerant,
+          capacity: dto.capacity,
+          capacityUnit: dto.capacityUnit,
           installationDate: dto.installationDate
             ? new Date(dto.installationDate)
             : undefined,
@@ -72,6 +75,9 @@ export class AssetsService {
             model: asset.model,
             serialNumber: asset.serialNumber,
             equipmentTypeId: asset.equipmentTypeId,
+            refrigerant: asset.refrigerant,
+            capacity: asset.capacity,
+            capacityUnit: asset.capacityUnit,
             installationDate: asset.installationDate?.toISOString() ?? null,
             location: asset.location,
             ownerId: asset.ownerId,
@@ -176,6 +182,9 @@ export class AssetsService {
           model: dto.model,
           serialNumber: dto.serialNumber,
           equipmentTypeId: dto.equipmentTypeId,
+          refrigerant: dto.refrigerant,
+          capacity: dto.capacity,
+          capacityUnit: dto.capacityUnit,
           installationDate: dto.installationDate
             ? new Date(dto.installationDate)
             : undefined,
@@ -219,6 +228,30 @@ export class AssetsService {
         changes.equipmentTypeId = {
           from: asset.equipmentTypeId,
           to: updatedAsset.equipmentTypeId,
+        };
+      }
+
+      // Refrigerant
+      if (asset.refrigerant !== updatedAsset.refrigerant) {
+        changes.refrigerant = {
+          from: asset.refrigerant,
+          to: updatedAsset.refrigerant,
+        };
+      }
+
+      // Capacity
+      if (asset.capacity !== updatedAsset.capacity) {
+        changes.capacity = {
+          from: asset.capacity,
+          to: updatedAsset.capacity,
+        };
+      }
+
+      // Capacity unit
+      if (asset.capacityUnit !== updatedAsset.capacityUnit) {
+        changes.capacityUnit = {
+          from: asset.capacityUnit,
+          to: updatedAsset.capacityUnit,
         };
       }
 

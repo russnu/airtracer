@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
 } from 'class-validator';
@@ -20,6 +21,18 @@ export class CreateAssetDto {
   @IsString()
   @IsNotEmpty()
   equipmentTypeId!: string;
+
+  @IsOptional()
+  @IsString()
+  refrigerant?: string;
+
+  @IsOptional()
+  @IsNumber()
+  capacity?: number;
+
+  @IsOptional()
+  @IsString()
+  capacityUnit?: string;
 
   @IsOptional()
   @IsDateString()

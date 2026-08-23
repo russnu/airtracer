@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../generated/prisma/client';
+import { PrismaClient, ServiceStatus } from '../../generated/prisma/client';
 
 export async function seedServiceRecords(prisma: PrismaClient) {
   const technician = await prisma.user.findUniqueOrThrow({
@@ -29,48 +29,78 @@ export async function seedServiceRecords(prisma: PrismaClient) {
     {
       assetId: daikin.id,
       technicianId: technician.id,
+
       serviceDate: new Date('2025-07-15'),
       serviceType: 'Preventive Maintenance',
+      status: ServiceStatus.COMPLETED,
+
       description:
         'Routine preventive maintenance including cleaning, inspection, and performance testing.',
+
       suctionPressure: 68.5,
       dischargePressure: 245.0,
-      current: 4.2,
+
       voltage: 230,
+      current: 4.2,
+
+      returnAirTemp: 29.0,
+      supplyAirTemp: 18.0,
+
       findings:
         'Unit operating normally. Filters were moderately dirty and indoor coil had light dust accumulation.',
+
       recommendations:
         'Clean filters regularly and schedule the next preventive maintenance within six months.',
     },
     {
       assetId: panasonic.id,
       technicianId: technician.id,
+
       serviceDate: new Date('2025-08-20'),
       serviceType: 'Inspection',
+      status: ServiceStatus.COMPLETED,
+
       description:
         'General inspection and operational testing of the air-conditioning unit.',
+
       suctionPressure: 70.0,
       dischargePressure: 238.5,
-      current: 5.1,
+
       voltage: 230,
+      current: 5.1,
+
+      returnAirTemp: 28.0,
+      supplyAirTemp: 17.0,
+
       findings:
         'Unit is operational. Minor dust accumulation found on the evaporator coil.',
+
       recommendations:
         'Perform coil cleaning during the next scheduled maintenance.',
     },
     {
       assetId: lg.id,
       technicianId: technician.id,
+
       serviceDate: new Date('2025-09-10'),
       serviceType: 'Repair',
+      status: ServiceStatus.COMPLETED,
+
       description:
         'Diagnostic inspection and repair following reported cooling performance issues.',
+
       suctionPressure: 58.0,
       dischargePressure: 220.0,
-      current: 5.8,
+
       voltage: 230,
+      current: 5.8,
+
+      returnAirTemp: 31.0,
+      supplyAirTemp: 24.0,
+
       findings:
         'Reduced cooling performance caused by restricted airflow from a heavily contaminated filter.',
+
       recommendations:
         'Replace or clean the air filter and monitor cooling performance after service.',
     },

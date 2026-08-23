@@ -32,6 +32,11 @@ export async function seedAssets(prisma: PrismaClient) {
       serialNumber: 'DAIKIN-DEMO-000001',
       isActive: true,
       equipmentTypeId: wallMountedSplit.id,
+
+      refrigerant: 'R32',
+      capacity: 1.5,
+      capacityUnit: 'HP',
+
       installationDate: new Date('2025-01-15'),
       location: 'Living Room',
       ownerId: owner.id,
@@ -42,6 +47,11 @@ export async function seedAssets(prisma: PrismaClient) {
       serialNumber: 'PANASONIC-DEMO-000001',
       isActive: true,
       equipmentTypeId: windowType.id,
+
+      refrigerant: 'R32',
+      capacity: 1.0,
+      capacityUnit: 'HP',
+
       installationDate: new Date('2025-03-10'),
       location: 'Bedroom',
       ownerId: owner.id,
@@ -52,6 +62,11 @@ export async function seedAssets(prisma: PrismaClient) {
       serialNumber: 'LG-DEMO-000001',
       isActive: false,
       equipmentTypeId: portable.id,
+
+      refrigerant: 'R410A',
+      capacity: 2.0,
+      capacityUnit: 'HP',
+
       installationDate: new Date('2025-06-20'),
       location: 'Office',
       ownerId: owner.id,

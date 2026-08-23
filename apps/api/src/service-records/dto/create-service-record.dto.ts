@@ -34,6 +34,14 @@ export class CreateServiceRecordDto {
   voltage?: number;
 
   @IsOptional()
+  @IsNumber()
+  returnAirTemp?: number;
+
+  @IsOptional()
+  @IsNumber()
+  supplyAirTemp?: number;
+
+  @IsOptional()
   @IsString()
   findings?: string;
 

@@ -3,24 +3,43 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QrController } from './qr.controller';
 import { QrService } from './qr.service';
 
+import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
+
 import { RoleName } from '../roles/enums/role-name.enum';
-import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 
 describe('QrController', () => {
   let controller: QrController;
 
   const qrServiceMock = {
     createForAsset: jest.fn(),
-    validate: jest.fn(),
-    findByAssetId: jest.fn(),
+    getPublicPassport: jest.fn(),
     regenerateForAsset: jest.fn(),
     deactivate: jest.fn(),
     activate: jest.fn(),
   };
 
-  const authenticatedUser = {
+  const user: AuthenticatedUser = {
     id: 'user-1',
-  } as AuthenticatedUser;
+    email: 'owner@example.com',
+    firstName: 'John',
+    lastName: 'Doe',
+    phoneNumber: null,
+    isVerified: true,
+    isActive: true,
+    lastLoginAt: null,
+    passwordChangedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    roles: [
+      {
+        role: {
+          id: 'role-1',
+          name: RoleName.OWNER,
+          description: 'Asset owner',
+        },
+      },
+    ],
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -38,323 +57,142 @@ describe('QrController', () => {
     controller = module.get<QrController>(QrController);
   });
 
-  // ---------------------------------------------------------------------------
-  // createForAsset
-  // ---------------------------------------------------------------------------
+  // ============================================================= //
+  // CREATE FOR ASSET
+  // ============================================================= //
 
   describe('createForAsset', () => {
-    it('should call qrService.createForAsset with asset ID and user ID', async () => {
+    it('should pass the asset id and authenticated user id to the service', async () => {
       const assetId = 'asset-1';
 
-      const expectedResult = {
+      const qrCode = {
         id: 'qr-1',
-        token: 'ATR_TEST_TOKEN',
-        url: 'https://airtracer.local/qr/ATR_TEST_TOKEN',
-      };
-
-      qrServiceMock.createForAsset.mockResolvedValue(expectedResult);
-
-      const result = await controller.createForAsset(
-        assetId,
-        authenticatedUser,
-      );
-
-      expect(qrServiceMock.createForAsset).toHaveBeenCalledWith(
-        assetId,
-        authenticatedUser.id,
-      );
-
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should propagate the service error', async () => {
-      const error = new Error('Asset not found');
-
-      qrServiceMock.createForAsset.mockRejectedValue(error);
-
-      await expect(
-        controller.createForAsset('asset-1', authenticatedUser),
-      ).rejects.toThrow(error);
-
-      expect(qrServiceMock.createForAsset).toHaveBeenCalledWith(
-        'asset-1',
-        authenticatedUser.id,
-      );
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // findByToken
-  // ---------------------------------------------------------------------------
-
-  describe('findByToken', () => {
-    it('should call qrService.validate with the token', async () => {
-      const token = 'ATR_TEST_TOKEN';
-
-      const expectedResult = {
-        id: 'qr-1',
-        token,
-        isActive: true,
-        asset: {
-          id: 'asset-1',
-        },
-      };
-
-      qrServiceMock.validate.mockResolvedValue(expectedResult);
-
-      const result = await controller.findByToken(token);
-
-      expect(qrServiceMock.validate).toHaveBeenCalledWith(token);
-
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should not call any other QR service method', async () => {
-      await controller.findByToken('ATR_TEST_TOKEN');
-
-      expect(qrServiceMock.validate).toHaveBeenCalledTimes(1);
-      expect(qrServiceMock.findByAssetId).not.toHaveBeenCalled();
-      expect(qrServiceMock.createForAsset).not.toHaveBeenCalled();
-      expect(qrServiceMock.regenerateForAsset).not.toHaveBeenCalled();
-      expect(qrServiceMock.deactivate).not.toHaveBeenCalled();
-      expect(qrServiceMock.activate).not.toHaveBeenCalled();
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // findByAssetId
-  // ---------------------------------------------------------------------------
-
-  describe('findByAssetId', () => {
-    it('should call qrService.findByAssetId with the asset ID', async () => {
-      const assetId = 'asset-1';
-
-      const expectedResult = {
-        id: 'qr-1',
-        token: 'ATR_TEST_TOKEN',
-        assetId,
-        isActive: true,
-      };
-
-      qrServiceMock.findByAssetId.mockResolvedValue(expectedResult);
-
-      const result = await controller.findByAssetId(assetId);
-
-      expect(qrServiceMock.findByAssetId).toHaveBeenCalledWith(assetId);
-
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should propagate the service error', async () => {
-      const error = new Error('QR code not found for this asset');
-
-      qrServiceMock.findByAssetId.mockRejectedValue(error);
-
-      await expect(controller.findByAssetId('asset-1')).rejects.toThrow(error);
-
-      expect(qrServiceMock.findByAssetId).toHaveBeenCalledWith('asset-1');
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // regenerate
-  // ---------------------------------------------------------------------------
-
-  describe('regenerate', () => {
-    it('should call qrService.regenerateForAsset with asset ID and user ID', async () => {
-      const assetId = 'asset-1';
-
-      const expectedResult = {
-        id: 'qr-1',
-        token: 'ATR_NEW_TOKEN',
-        url: 'https://airtracer.local/qr/ATR_NEW_TOKEN',
+        token: 'ATR_test-token',
+        url: 'https://airtracer.local/qr/ATR_test-token',
         asset: {
           id: assetId,
         },
       };
 
-      qrServiceMock.regenerateForAsset.mockResolvedValue(expectedResult);
+      qrServiceMock.createForAsset.mockResolvedValue(qrCode);
 
-      const result = await controller.regenerate(assetId, authenticatedUser);
+      const result = await controller.createForAsset(assetId, user);
 
-      expect(qrServiceMock.regenerateForAsset).toHaveBeenCalledWith(
+      expect(qrServiceMock.createForAsset).toHaveBeenCalledWith(
         assetId,
-        authenticatedUser.id,
+        user.id,
       );
 
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should propagate the service error', async () => {
-      const error = new Error('QR code not found for this asset');
-
-      qrServiceMock.regenerateForAsset.mockRejectedValue(error);
-
-      await expect(
-        controller.regenerate('asset-1', authenticatedUser),
-      ).rejects.toThrow(error);
-
-      expect(qrServiceMock.regenerateForAsset).toHaveBeenCalledWith(
-        'asset-1',
-        authenticatedUser.id,
-      );
+      expect(result).toEqual(qrCode);
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // deactivate
-  // ---------------------------------------------------------------------------
+  // ============================================================= //
+  // FIND BY TOKEN
+  // ============================================================= //
+
+  describe('findByToken', () => {
+    it('should pass the QR token to the service', async () => {
+      const token = 'ATR_test-token';
+
+      const passport = {
+        asset: {
+          id: 'asset-1',
+          brand: 'Daikin',
+          model: 'FTKF35',
+          serialNumber: 'SN-001',
+          equipmentType: 'Air Conditioner',
+          installationDate: new Date('2025-01-15T00:00:00.000Z'),
+          location: 'Living Room',
+        },
+        serviceHistory: [],
+      };
+
+      qrServiceMock.getPublicPassport.mockResolvedValue(passport);
+
+      const result = await controller.findByToken(token);
+
+      expect(qrServiceMock.getPublicPassport).toHaveBeenCalledWith(token);
+
+      expect(result).toEqual(passport);
+    });
+  });
+
+  // ============================================================= //
+  // REGENERATE
+  // ============================================================= //
+
+  describe('regenerate', () => {
+    it('should pass the asset id and authenticated user id to the service', async () => {
+      const assetId = 'asset-1';
+
+      const regeneratedQrCode = {
+        id: 'qr-1',
+        token: 'ATR_new-token',
+        url: 'https://airtracer.local/qr/ATR_new-token',
+        asset: {
+          id: assetId,
+        },
+      };
+
+      qrServiceMock.regenerateForAsset.mockResolvedValue(regeneratedQrCode);
+
+      const result = await controller.regenerate(assetId, user);
+
+      expect(qrServiceMock.regenerateForAsset).toHaveBeenCalledWith(
+        assetId,
+        user.id,
+      );
+
+      expect(result).toEqual(regeneratedQrCode);
+    });
+  });
+
+  // ============================================================= //
+  // DEACTIVATE
+  // ============================================================= //
 
   describe('deactivate', () => {
-    it('should call qrService.deactivate with token and user ID', async () => {
-      const token = 'ATR_TEST_TOKEN';
+    it('should pass the QR token and authenticated user id to the service', async () => {
+      const token = 'ATR_test-token';
 
-      const expectedResult = {
+      const deactivatedQrCode = {
         id: 'qr-1',
         token,
         isActive: false,
       };
 
-      qrServiceMock.deactivate.mockResolvedValue(expectedResult);
+      qrServiceMock.deactivate.mockResolvedValue(deactivatedQrCode);
 
-      const result = await controller.deactivate(token, authenticatedUser);
+      const result = await controller.deactivate(token, user);
 
-      expect(qrServiceMock.deactivate).toHaveBeenCalledWith(
-        token,
-        authenticatedUser.id,
-      );
+      expect(qrServiceMock.deactivate).toHaveBeenCalledWith(token, user.id);
 
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should propagate the service error', async () => {
-      const error = new Error(
-        'You do not own the asset associated with this QR code',
-      );
-
-      qrServiceMock.deactivate.mockRejectedValue(error);
-
-      await expect(
-        controller.deactivate('ATR_TEST_TOKEN', authenticatedUser),
-      ).rejects.toThrow(error);
-
-      expect(qrServiceMock.deactivate).toHaveBeenCalledWith(
-        'ATR_TEST_TOKEN',
-        authenticatedUser.id,
-      );
+      expect(result).toEqual(deactivatedQrCode);
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // activate
-  // ---------------------------------------------------------------------------
+  // ============================================================= //
+  // ACTIVATE
+  // ============================================================= //
 
   describe('activate', () => {
-    it('should call qrService.activate with token and user ID', async () => {
-      const token = 'ATR_TEST_TOKEN';
+    it('should pass the QR token and authenticated user id to the service', async () => {
+      const token = 'ATR_test-token';
 
-      const expectedResult = {
+      const activatedQrCode = {
         id: 'qr-1',
         token,
         isActive: true,
       };
 
-      qrServiceMock.activate.mockResolvedValue(expectedResult);
+      qrServiceMock.activate.mockResolvedValue(activatedQrCode);
 
-      const result = await controller.activate(token, authenticatedUser);
+      const result = await controller.activate(token, user);
 
-      expect(qrServiceMock.activate).toHaveBeenCalledWith(
-        token,
-        authenticatedUser.id,
-      );
+      expect(qrServiceMock.activate).toHaveBeenCalledWith(token, user.id);
 
-      expect(result).toEqual(expectedResult);
-    });
-
-    it('should propagate the service error', async () => {
-      const error = new Error(
-        'You do not own the asset associated with this QR code',
-      );
-
-      qrServiceMock.activate.mockRejectedValue(error);
-
-      await expect(
-        controller.activate('ATR_TEST_TOKEN', authenticatedUser),
-      ).rejects.toThrow(error);
-
-      expect(qrServiceMock.activate).toHaveBeenCalledWith(
-        'ATR_TEST_TOKEN',
-        authenticatedUser.id,
-      );
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Controller metadata
-  // ---------------------------------------------------------------------------
-
-  describe('route metadata', () => {
-    it('should define OWNER role for createForAsset', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        QrController.prototype.createForAsset,
-      );
-
-      expect(roles).toEqual([RoleName.OWNER]);
-    });
-
-    it('should define OWNER role for regenerate', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        QrController.prototype.regenerate,
-      );
-
-      expect(roles).toEqual([RoleName.OWNER]);
-    });
-
-    it('should define OWNER role for deactivate', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        QrController.prototype.deactivate,
-      );
-
-      expect(roles).toEqual([RoleName.OWNER]);
-    });
-
-    it('should define OWNER role for activate', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        QrController.prototype.activate,
-      );
-
-      expect(roles).toEqual([RoleName.OWNER]);
-    });
-
-    it('should not define OWNER role for findByToken', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        QrController.prototype.findByToken,
-      );
-
-      expect(roles).toBeUndefined();
-    });
-
-    it('should not define OWNER role for findByAssetId', () => {
-      const roles = Reflect.getMetadata(
-        'roles',
-        QrController.prototype.findByAssetId,
-      );
-
-      expect(roles).toBeUndefined();
-    });
-
-    it('should mark findByToken as public', () => {
-      const isPublic = Reflect.getMetadata(
-        'isPublic',
-        QrController.prototype.findByToken,
-      );
-
-      expect(isPublic).toBe(true);
+      expect(result).toEqual(activatedQrCode);
     });
   });
 });

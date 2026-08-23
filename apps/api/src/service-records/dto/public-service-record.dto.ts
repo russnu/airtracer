@@ -9,6 +9,8 @@ export class PublicServiceRecordDto {
     dischargePressure: number | null;
     current: number | null;
     voltage: number | null;
+    returnAirTemp: number | null;
+    supplyAirTemp: number | null;
   };
 
   findings?: string | null;
@@ -18,8 +20,8 @@ export class PublicServiceRecordDto {
     name: string;
   } | null;
 
-  //   photos: {
-  //     id: string;
-  //     url: string;
-  //   }[];
+  photos!: {
+    id: string;
+    url: string;
+  }[];
 }

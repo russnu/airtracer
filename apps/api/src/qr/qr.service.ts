@@ -10,6 +10,7 @@ import { generateQrToken } from './utils/qr.util';
 import { PublicPassportResponseDto } from './dto/public-passport-response.dto';
 import { Event } from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class QrService {
@@ -17,6 +18,7 @@ export class QrService {
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly configService: ConfigService,
+    private readonly storageService: StorageService,
   ) {}
   //-------------------------------------------------------------//
   private buildQrUrl(token: string): string {
@@ -145,10 +147,12 @@ export class QrService {
         asset: {
           include: {
             equipmentType: true,
+
             serviceRecords: {
               orderBy: {
                 serviceDate: 'desc',
               },
+
               include: {
                 technician: true,
                 photos: true,
@@ -167,6 +171,41 @@ export class QrService {
       throw new ConflictException('QR code is inactive');
     }
 
+    const serviceHistory = await Promise.all(
+      qrCode.asset.serviceRecords.map(async (record) => ({
+        id: record.id,
+
+        serviceDate: record.serviceDate,
+        serviceType: record.serviceType,
+        description: record.description,
+
+        measurements: {
+          suctionPressure: record.suctionPressure,
+          dischargePressure: record.dischargePressure,
+          current: record.current,
+          voltage: record.voltage,
+          returnAirTemp: record.returnAirTemp,
+          supplyAirTemp: record.supplyAirTemp,
+        },
+
+        findings: record.findings,
+        recommendations: record.recommendations,
+
+        technician: record.technician
+          ? {
+              name: `${record.technician.firstName} ${record.technician.lastName}`,
+            }
+          : null,
+
+        photos: await Promise.all(
+          record.photos.map(async (photo) => ({
+            id: photo.id,
+            url: await this.storageService.getUrl(photo.storageKey),
+          })),
+        ),
+      })),
+    );
+
     return {
       asset: {
         id: qrCode.asset.id,
@@ -178,27 +217,7 @@ export class QrService {
         location: qrCode.asset.location,
       },
 
-      serviceHistory: qrCode.asset.serviceRecords.map((record) => ({
-        id: record.id,
-        serviceDate: record.serviceDate,
-        serviceType: record.serviceType,
-        description: record.description,
-        measurements: {
-          suctionPressure: record.suctionPressure,
-          dischargePressure: record.dischargePressure,
-          current: record.current,
-          voltage: record.voltage,
-        },
-
-        findings: record.findings,
-        recommendations: record.recommendations,
-
-        technician: record.technician
-          ? {
-              name: `${record.technician.firstName} ${record.technician.lastName}`,
-            }
-          : null,
-      })),
+      serviceHistory,
     };
   }
   //-------------------------------------------------------------//

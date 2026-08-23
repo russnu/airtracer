@@ -161,9 +161,9 @@ model Asset {
   equipmentTypeId String
   equipmentType   EquipmentType @relation(fields: [equipmentTypeId], references: [id])
 
-  refrigerant   String?
-  capacity      Float?
-  capacityUnit  String?
+  refrigerant  String?
+  capacity     Float?
+  capacityUnit String?
 
   // Installation Information
   installationDate DateTime?
@@ -232,8 +232,8 @@ model ServiceRecord {
   voltage Float?
 
   // Air Temperature Measurements (°C)
-returnAirTemp Float?
-supplyAirTemp Float?
+  returnAirTemp Float?
+  supplyAirTemp Float?
 
   // Condition / Findings
   findings        String?

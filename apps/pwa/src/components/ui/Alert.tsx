@@ -6,6 +6,7 @@ interface AlertProps {
   variant?: AlertVariant;
   title?: string;
   children: ReactNode;
+  className?: string;
   onDismiss?: () => void;
 }
 
@@ -16,10 +17,10 @@ const variantClasses: Record<AlertVariant, string> = {
   error: 'bg-error-50 text-error-700 border-error-200',
 };
 
-export function Alert({ variant = 'info', title, children, onDismiss }: AlertProps) {
+export function Alert({ variant = 'info', title, children, className = '', onDismiss }: AlertProps) {
   return (
     <div
-      className={`rounded-lg border p-4 ${variantClasses[variant]}`}
+      className={`rounded-lg border p-4 ${variantClasses[variant]} ${className}`}
       role="alert"
     >
       <div className="flex justify-between">

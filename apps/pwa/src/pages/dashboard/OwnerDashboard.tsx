@@ -8,7 +8,7 @@ export function OwnerDashboard() {
   
   const { data: assets, isLoading, error } = useQuery({
     queryKey: ['assets'],
-    queryFn: () => assetsApi.getAssets()
+    queryFn: () => assetsApi.findAll(),
   });
 
   return (
@@ -28,7 +28,7 @@ export function OwnerDashboard() {
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <dt className="text-sm font-medium text-slate-500 truncate">Active Equipment</dt>
-            <dd className="mt-1 text-3xl font-semibold text-slate-900">{assets ? assets.filter((a: any) => a.isActive).length : '-'}</dd>
+            <dd className="mt-1 text-3xl font-semibold text-slate-900">{assets ? assets.filter((a) => a.isActive).length : '-'}</dd>
           </div>
         </div>
         <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -40,7 +40,7 @@ export function OwnerDashboard() {
       </div>
 
       <div className="flex gap-4">
-        <Link to="/assets/new" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <Link to="/equipment/new" className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
           <svg className="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
@@ -79,9 +79,9 @@ export function OwnerDashboard() {
 
         {!isLoading && !error && assets && assets.length > 0 && (
           <ul className="divide-y divide-slate-200">
-            {assets.slice(0, 5).map((asset: any) => (
+            {assets.slice(0, 5).map((asset) => (
               <li key={asset.id}>
-                <Link to={`/assets/${asset.id}`} className="block hover:bg-slate-50">
+                <Link to={`/equipment/${asset.id}`} className="block hover:bg-slate-50">
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-blue-600 truncate">{asset.brand} {asset.model}</p>

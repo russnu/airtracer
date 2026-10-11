@@ -26,7 +26,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
+      await login({ email, password });
       navigate('/dashboard', { replace: true });
     } catch (err) {
       if (err instanceof ApiClientError) {

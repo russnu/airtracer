@@ -1,10 +1,9 @@
-import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { assetsApi, qrApi } from '../../lib/api-client';
 import { Button, Card, Badge, Spinner, PageHeader, Alert, EmptyState } from '../../components/ui';
-import type { Asset } from '../../types/api';
+import type { Asset, ServiceRecord } from '../../types/api';
 
 export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -12,7 +11,7 @@ export function EquipmentDetailPage() {
 
   const { data: asset, isLoading, error } = useQuery<Asset>({
     queryKey: ['assets', id],
-    queryFn: () => assetsApi.getById(id!),
+    queryFn: () => assetsApi.findOne(id!),
     enabled: !!id,
   });
 
@@ -23,15 +22,15 @@ export function EquipmentDetailPage() {
     },
   });
 
-  const deactivateMutation = useMutation({
-    mutationFn: () => assetsApi.deactivate(id!),
+  const regenerateQrMutation = useMutation({
+    mutationFn: () => qrApi.regenerate(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets', id] });
     },
   });
 
-  const activateMutation = useMutation({
-    mutationFn: () => assetsApi.update(id!, { isActive: true }),
+  const deactivateMutation = useMutation({
+    mutationFn: () => assetsApi.deactivate(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['assets', id] });
     },
@@ -54,13 +53,9 @@ export function EquipmentDetailPage() {
     );
   }
 
-  const handleToggleStatus = () => {
-    if (asset.isActive) {
-      if (window.confirm('Are you sure you want to deactivate this equipment?')) {
-        deactivateMutation.mutate();
-      }
-    } else {
-      activateMutation.mutate();
+  const handleDeactivate = () => {
+    if (window.confirm('Are you sure you want to deactivate this equipment? Deactivated equipment cannot receive new service records.')) {
+      deactivateMutation.mutate();
     }
   };
 
@@ -77,7 +72,7 @@ export function EquipmentDetailPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
+    <div className="space-y-6">
       <div className="mb-4">
         <Link to="/equipment" className="text-slate-500 hover:text-slate-800 text-sm font-medium transition-colors">
           &larr; Back to Equipment
@@ -91,13 +86,17 @@ export function EquipmentDetailPage() {
             <Link to={`/equipment/${asset.id}/edit`}>
               <Button variant="outline">Edit</Button>
             </Link>
-            <Button 
-              variant={asset.isActive ? 'danger' : 'success'} 
-              onClick={handleToggleStatus}
-              isLoading={deactivateMutation.isPending || activateMutation.isPending}
-            >
-              {asset.isActive ? 'Deactivate' : 'Activate'}
-            </Button>
+            {asset.isActive ? (
+              <Button 
+                variant="danger" 
+                onClick={handleDeactivate}
+                isLoading={deactivateMutation.isPending}
+              >
+                Deactivate
+              </Button>
+            ) : (
+              <Badge variant="neutral">Deactivated</Badge>
+            )}
           </div>
         }
       />
@@ -153,7 +152,7 @@ export function EquipmentDetailPage() {
               />
             ) : (
               <div className="space-y-4">
-                {asset.serviceRecords.map((record: any) => (
+                {asset.serviceRecords.map((record: ServiceRecord) => (
                   <Link key={record.id} to={`/service-records/${record.id}`} className="block group">
                     <div className="border border-slate-200 rounded-lg p-4 hover:border-blue-500 transition-colors">
                       <div className="flex justify-between items-start mb-2">
@@ -189,16 +188,33 @@ export function EquipmentDetailPage() {
                   <div className="bg-white p-4 border border-slate-200 rounded-xl mb-4">
                     <QRCodeSVG value={qrUrl} size={150} />
                   </div>
+                  <p className="text-sm text-slate-600 mb-2">
+                    Token: <span className="font-mono text-xs font-semibold">{asset.qrCode.token}</span>
+                  </p>
                   <p className="text-sm text-slate-600 mb-4">
                     Scan this QR code to quickly access equipment details and service history.
                   </p>
-                  <Button 
-                    variant="outline" 
-                    className="w-full"
-                    onClick={() => window.open(qrUrl, '_blank')}
-                  >
-                    View Public Page
-                  </Button>
+                  <div className="w-full space-y-2">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => window.open(qrUrl, '_blank')}
+                    >
+                      View Public Passport
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full text-xs"
+                      isLoading={regenerateQrMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm('Regenerating will invalidate the previous QR code. Continue?')) {
+                          regenerateQrMutation.mutate();
+                        }
+                      }}
+                    >
+                      Regenerate QR Code
+                    </Button>
+                  </div>
                 </>
               ) : (
                 <>

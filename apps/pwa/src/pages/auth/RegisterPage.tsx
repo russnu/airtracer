@@ -6,7 +6,6 @@ import { ApiClientError } from '../../lib/api-client';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
-import type { Role } from '../../types/api';
 
 export function RegisterPage() {
   const [firstName, setFirstName] = useState('');
@@ -14,7 +13,7 @@ export function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState<Role>('OWNER');
+  const [role, setRole] = useState<'OWNER' | 'TECHNICIAN'>('OWNER');
   
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,7 +143,7 @@ export function RegisterPage() {
                 required
                 autoComplete="new-password"
                 disabled={isSubmitting}
-                helperText="Must be at least 8 characters long."
+                hint="Must be at least 8 characters long."
               />
             </div>
 

@@ -15,7 +15,7 @@ export function AppLayout() {
   const navItems = [];
   if (hasRole("OWNER")) {
     navItems.push({ name: "Dashboard", path: "/dashboard" });
-    navItems.push({ name: "My Equipment", path: "/assets" });
+    navItems.push({ name: "My Equipment", path: "/equipment" });
     navItems.push({ name: "Scan QR", path: "/scan" });
   } else if (hasRole("TECHNICIAN")) {
     navItems.push({ name: "Dashboard", path: "/dashboard" });

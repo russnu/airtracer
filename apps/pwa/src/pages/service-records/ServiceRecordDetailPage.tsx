@@ -1,16 +1,24 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { serviceRecordsApi, servicePhotosApi } from '../../lib/api-client';
+import { useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { serviceRecordsApi, servicePhotosApi, ApiClientError } from '../../lib/api-client';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { Alert } from '../../components/ui/Alert';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Button } from '../../components/ui/Button';
+import type { ServiceStatus } from '../../types/api';
 
 export function ServiceRecordDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [caption, setCaption] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const { data: record, isLoading: isLoadingRecord, error: recordError } = useQuery({
     queryKey: ['service-records', id],
@@ -23,6 +31,31 @@ export function ServiceRecordDetailPage() {
     queryFn: () => servicePhotosApi.findByServiceRecord(id!),
     enabled: !!id,
   });
+
+  const uploadMutation = useMutation({
+    mutationFn: (file: File) => servicePhotosApi.upload(id!, file, caption || undefined),
+    onSuccess: () => {
+      setSelectedFile(null);
+      setCaption('');
+      setUploadError(null);
+      queryClient.invalidateQueries({ queryKey: ['service-photos', id] });
+    },
+    onError: (err) => {
+      setUploadError(err instanceof ApiClientError ? err.message : 'Failed to upload photo.');
+    },
+  });
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleUpload = () => {
+    if (selectedFile) {
+      uploadMutation.mutate(selectedFile);
+    }
+  };
 
   if (isLoadingRecord) {
     return <div className="p-8 flex justify-center h-[50vh] items-center"><Spinner size="lg" /></div>;
@@ -39,6 +72,15 @@ export function ServiceRecordDetailPage() {
     );
   }
 
+  const getBadgeVariant = (status: ServiceStatus) => {
+    switch (status) {
+      case 'COMPLETED': return 'success';
+      case 'IN_PROGRESS': return 'warning';
+      case 'CANCELLED': return 'error';
+      default: return 'info';
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-20">
       <div className="mb-6 flex items-center space-x-4">
@@ -52,7 +94,6 @@ export function ServiceRecordDetailPage() {
         <PageHeader 
           title="Service Record Details" 
           description={`Logged on ${new Date(record.serviceDate).toLocaleDateString()}`}
-          className="mb-0"
         />
       </div>
 
@@ -61,16 +102,14 @@ export function ServiceRecordDetailPage() {
           <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-xl font-bold text-slate-900">{record.serviceType}</h2>
-              {record.technicianName && (
-                <p className="text-slate-500 text-sm mt-1">Technician: {record.technicianName}</p>
-              )}
+              <p className="text-slate-500 text-xs mt-1">Record ID: {record.id}</p>
             </div>
-            <Badge variant="default" className="text-sm px-3 py-1">{record.status}</Badge>
+            <Badge variant={getBadgeVariant(record.status)}>{record.status}</Badge>
           </div>
 
           {record.description && (
             <div className="mb-6">
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</h3>
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Description of Work</h3>
               <p className="text-slate-900 whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-100">{record.description}</p>
             </div>
           )}
@@ -78,7 +117,7 @@ export function ServiceRecordDetailPage() {
           {/* Measurements */}
           {(record.suctionPressure !== null || record.dischargePressure !== null || record.current !== null || record.voltage !== null || record.returnAirTemp !== null || record.supplyAirTemp !== null) && (
             <div className="mb-6">
-              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Measurements</h3>
+              <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Diagnostic Measurements</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
                 <div><span className="block text-xs text-slate-400">Suction Pressure</span><span className="font-medium text-slate-900">{record.suctionPressure ?? '-'} PSI</span></div>
                 <div><span className="block text-xs text-slate-400">Discharge Pressure</span><span className="font-medium text-slate-900">{record.dischargePressure ?? '-'} PSI</span></div>
@@ -90,7 +129,7 @@ export function ServiceRecordDetailPage() {
             </div>
           )}
 
-          {/* Findings & Recs */}
+          {/* Findings & Recommendations */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Findings</h3>
@@ -107,9 +146,40 @@ export function ServiceRecordDetailPage() {
           </div>
         </Card>
 
-        {/* Photos */}
+        {/* Photos Evidence */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">Photos</h3>
+          <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">Photo Evidence</h3>
+          
+          {uploadError && <Alert variant="error" title="Upload Error" className="mb-4">{uploadError}</Alert>}
+
+          {/* Upload input */}
+          <div className="mb-6 p-4 border border-dashed border-slate-300 rounded-lg bg-slate-50">
+            <h4 className="text-sm font-medium text-slate-700 mb-2">Attach Photo</h4>
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={handleFileChange}
+                className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-accent-50 file:text-accent-700 hover:file:bg-accent-100"
+              />
+              <input 
+                type="text"
+                placeholder="Caption (optional)"
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+              />
+              <Button 
+                size="sm" 
+                disabled={!selectedFile || uploadMutation.isPending}
+                isLoading={uploadMutation.isPending}
+                onClick={handleUpload}
+              >
+                Upload Photo
+              </Button>
+            </div>
+          </div>
+
           {isLoadingPhotos ? (
             <div className="flex justify-center py-8"><Spinner /></div>
           ) : photos.length === 0 ? (
@@ -120,7 +190,7 @@ export function ServiceRecordDetailPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {photos.map((photo) => (
                 <div key={photo.id} className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square">
-                  <img src={photo.url || '/placeholder-image.png'} alt={photo.caption || 'Service photo'} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                  <img src={photo.url} alt={photo.caption || 'Service photo'} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                   {photo.caption && (
                     <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs p-2 truncate">
                       {photo.caption}

@@ -31,19 +31,19 @@ interface AuthContextValue extends AuthState {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
+  const [state, setState] = useState<AuthState>(() => {
+    const token = getStoredToken();
+    return {
+      user: null,
+      isLoading: !!token,
+      isAuthenticated: false,
+    };
   });
 
   // Check for existing token on mount
   useEffect(() => {
     const token = getStoredToken();
-    if (!token) {
-      setState({ user: null, isLoading: false, isAuthenticated: false });
-      return;
-    }
+    if (!token) return;
 
     authApi
       .me()
@@ -102,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext value={value}>{children}</AuthContext>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {

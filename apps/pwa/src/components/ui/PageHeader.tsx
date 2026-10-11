@@ -4,12 +4,12 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   action?: ReactNode;
-  backTo?: string;
+  className?: string;
 }
 
-export function PageHeader({ title, description, action }: PageHeaderProps) {
+export function PageHeader({ title, description, action, className = '' }: PageHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 ${className}`}>
       <div>
         <h1 className="text-2xl font-semibold text-primary-900">{title}</h1>
         {description && (

@@ -36,13 +36,18 @@ export function clearStoredToken(): void {
 // ===== HTTP Client =====
 
 class ApiClientError extends Error {
+  statusCode: number;
+  details?: string[];
+
   constructor(
-    public statusCode: number,
+    statusCode: number,
     message: string,
-    public details?: string[],
+    details?: string[],
   ) {
     super(message);
     this.name = 'ApiClientError';
+    this.statusCode = statusCode;
+    this.details = details;
   }
 }
 

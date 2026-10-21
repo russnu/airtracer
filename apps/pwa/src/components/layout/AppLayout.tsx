@@ -15,7 +15,7 @@ export function AppLayout() {
   const navItems = [];
   if (hasRole("OWNER")) {
     navItems.push({ name: "Dashboard", path: "/dashboard" });
-    navItems.push({ name: "My Equipment", path: "/equipment" });
+    navItems.push({ name: "My Equipments", path: "/equipment" });
     navItems.push({ name: "Scan QR", path: "/scan" });
   } else if (hasRole("TECHNICIAN")) {
     navItems.push({ name: "Dashboard", path: "/dashboard" });
@@ -35,7 +35,7 @@ export function AppLayout() {
               <div className="shrink-0 flex items-center">
                 <Link
                   to="/dashboard"
-                  className="text-xl font-bold text-slate-900 flex items-center gap-2"
+                  className="text-xl font-black text-slate-900 flex items-center gap-2"
                 >
                   <svg
                     className="w-6 h-6 text-blue-600"
@@ -59,9 +59,12 @@ export function AppLayout() {
                     key={item.path}
                     to={item.path}
                     className={({ isActive }) =>
+                      `inline-flex items-center px-1 pt-1 border-b-2 text-sm transition-colors duration-200 
+                    ${
                       isActive
-                        ? "border-blue-600 text-slate-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                        : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+                        ? "border-blue-600 text-slate-900 font-bold"
+                        : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 font-medium"
+                    }`
                     }
                   >
                     {item.name}

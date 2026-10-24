@@ -8,6 +8,16 @@ import type {
 import { Card } from "../../components/ui/Card";
 import { Spinner } from "../../components/ui/Spinner";
 import { Alert } from "../../components/ui/Alert";
+import {
+  PiBarcodeBold,
+  PiBuildingApartmentBold,
+  PiCaretDownBold,
+  PiGaugeBold,
+  PiSquaresFourBold,
+  PiTagBold,
+  PiUserGear,
+} from "react-icons/pi";
+import { DataIcon } from "../../components/ui/DataIcon";
 
 export function PassportPage() {
   const { token } = useParams<{ token: string }>();
@@ -70,50 +80,77 @@ export function PassportPage() {
           </h2>
           <Card className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm font-medium text-slate-500">
-                  Brand / Model
-                </p>
-                <p className="mt-1 text-base font-semibold text-slate-900">
-                  {asset.brand} {asset.model && `/ ${asset.model}`}
-                </p>
+              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+                <span>
+                  <DataIcon icon={PiTagBold} />
+                </span>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Brand / Model
+                  </p>
+                  <p className="font-semibold text-slate-900">
+                    {asset.brand} {asset.model && `/ ${asset.model}`}
+                  </p>
+                </div>
               </div>
               {asset.serialNumber && (
-                <div>
-                  <p className="text-sm font-medium text-slate-500">
-                    Serial Number
-                  </p>
-                  <p className="mt-1 text-base font-medium text-slate-900">
-                    {asset.serialNumber}
-                  </p>
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+                  <span>
+                    <DataIcon icon={PiBarcodeBold} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Serial Number
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {asset.serialNumber}
+                    </p>
+                  </div>
                 </div>
               )}
               {asset.equipmentType && (
-                <div>
-                  <p className="text-sm font-medium text-slate-500">
-                    Equipment Type
-                  </p>
-                  <p className="mt-1 text-base font-medium text-slate-900">
-                    {asset.equipmentType}
-                  </p>
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+                  <span>
+                    <DataIcon icon={PiSquaresFourBold} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Equipment Type
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {asset.equipmentType}
+                    </p>
+                  </div>
                 </div>
               )}
               {asset.location && (
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Location</p>
-                  <p className="mt-1 text-base font-medium text-slate-900">
-                    {asset.location}
-                  </p>
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+                  <span>
+                    <DataIcon icon={PiBuildingApartmentBold} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Location
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {asset.location}
+                    </p>
+                  </div>
                 </div>
               )}
               {asset.installationDate && (
-                <div>
-                  <p className="text-sm font-medium text-slate-500">
-                    Installation Date
-                  </p>
-                  <p className="mt-1 text-base font-medium text-slate-900">
-                    {new Date(asset.installationDate).toLocaleDateString()}
-                  </p>
+                <div className="flex items-center gap-2 pb-2 w-full">
+                  <span>
+                    <DataIcon icon={PiGaugeBold} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                      Installation Date
+                    </p>
+                    <p className="font-semibold text-slate-900">
+                      {new Date(asset.installationDate).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -191,22 +228,16 @@ function ServiceRecordItem({ record }: { record: PublicServiceRecord }) {
         )}
 
         {record.technician?.name && (
-          <p className="text-xs text-slate-500 mt-3 flex items-center">
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-            Technician: {record.technician.name}
-          </p>
+          <div className="p-3 border border-slate-200 bg-slate-50 rounded-lg mt-4">
+            <p className="text-xs text-slate-500 flex items-center">
+              <span className="mr-2">
+                <PiUserGear className="w-4 h-4" />
+              </span>
+              <span>
+                Technician: <b>{record.technician.name}</b>
+              </span>
+            </p>
+          </div>
         )}
       </div>
 
@@ -214,18 +245,7 @@ function ServiceRecordItem({ record }: { record: PublicServiceRecord }) {
         <summary className="cursor-pointer p-3 text-sm font-medium text-slate-600 hover:text-slate-900 flex items-center justify-between">
           <span>View Detailed Measurements & Findings</span>
           <span className="transition group-open:rotate-180">
-            <svg
-              fill="none"
-              height="24"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.5"
-              viewBox="0 0 24 24"
-              width="24"
-            >
-              <path d="M6 9l6 6 6-6"></path>
-            </svg>
+            <PiCaretDownBold className="w-4 h-4" />
           </span>
         </summary>
         <div className="p-5 pt-2 text-sm text-slate-600 border-t border-slate-100 space-y-6">

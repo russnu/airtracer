@@ -5,6 +5,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "dev": "pnpm --parallel --filter api --filter pwa dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

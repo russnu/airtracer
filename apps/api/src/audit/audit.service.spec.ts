@@ -8,6 +8,8 @@ import { AuditService } from './audit.service';
 
 import { CreateAuditLogInput } from './types/create-audit-log.type';
 
+import { Prisma } from '../../generated/prisma/client';
+
 import { createHash } from 'crypto';
 
 describe('AuditService', () => {
@@ -23,8 +25,17 @@ describe('AuditService', () => {
     auditLog: mockAuditLog,
   };
 
+  const mockQueryRaw = jest.fn();
+
+  // log() runs inside the caller's transaction.
+  const tx = {
+    $queryRaw: mockQueryRaw,
+    auditLog: mockAuditLog,
+  } as unknown as Prisma.TransactionClient;
+
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockQueryRaw.mockResolvedValue([{ '?column?': 1 }]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -68,15 +79,13 @@ describe('AuditService', () => {
       mockAuditLog.findFirst.mockResolvedValue(previousAudit);
       mockAuditLog.create.mockResolvedValue(createdAudit);
 
-      const result = await service.log(input);
+      const result = await service.log(input, tx);
 
       expect(mockAuditLog.findFirst).toHaveBeenCalledWith({
         where: {
           assetId: 'asset-123',
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       });
 
       expect(mockAuditLog.create).toHaveBeenCalledTimes(1);
@@ -110,15 +119,13 @@ describe('AuditService', () => {
 
       mockAuditLog.create.mockResolvedValue(createdAudit);
 
-      await service.log(input);
+      await service.log(input, tx);
 
       expect(mockAuditLog.findFirst).toHaveBeenCalledWith({
         where: {
           assetId: 'asset-123',
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       });
 
       const createCall = mockAuditLog.create.mock.calls[0][0];
@@ -140,7 +147,7 @@ describe('AuditService', () => {
         ...inputWithoutOptionalFields,
       });
 
-      await service.log(inputWithoutOptionalFields);
+      await service.log(inputWithoutOptionalFields, tx);
 
       const createCall = mockAuditLog.create.mock.calls[0][0];
 
@@ -161,7 +168,7 @@ describe('AuditService', () => {
 
       const before = Date.now();
 
-      await service.log(input);
+      await service.log(input, tx);
 
       const after = Date.now();
 
@@ -188,34 +195,30 @@ describe('AuditService', () => {
       expect(createCall.data.hash).toBe(expectedHash);
     });
 
-    it('should use the supplied transaction client when provided', async () => {
-      const transactionCreate = jest.fn();
+    it('should lock the asset before reading the previous audit', async () => {
+      const callOrder: string[] = [];
 
-      const transactionClient = {
-        auditLog: {
-          create: transactionCreate,
-        },
-      };
-
-      mockAuditLog.findFirst.mockResolvedValue(null);
-
-      transactionCreate.mockResolvedValue({
-        id: 'audit-1',
-        ...input,
+      mockQueryRaw.mockImplementation(() => {
+        callOrder.push('lock');
+        return Promise.resolve([{ '?column?': 1 }]);
       });
-
-      const result = await service.log(input, transactionClient as any);
-
-      expect(mockAuditLog.findFirst).toHaveBeenCalled();
-
-      expect(transactionCreate).toHaveBeenCalledTimes(1);
-
-      expect(mockAuditLog.create).not.toHaveBeenCalled();
-
-      expect(result).toEqual({
-        id: 'audit-1',
-        ...input,
+      mockAuditLog.findFirst.mockImplementation(() => {
+        callOrder.push('findFirst');
+        return Promise.resolve(null);
       });
+      mockAuditLog.create.mockResolvedValue({ id: 'audit-1' });
+
+      await service.log(input, tx);
+
+      expect(callOrder).toEqual(['lock', 'findFirst']);
+
+      // Tagged template: the asset ID is passed as a bound parameter.
+      const [sqlParts, assetIdParam] = mockQueryRaw.mock.calls[0] as [
+        TemplateStringsArray,
+        string,
+      ];
+      expect(sqlParts.join('?')).toContain('pg_advisory_xact_lock');
+      expect(assetIdParam).toBe('asset-123');
     });
 
     it('should propagate an error when finding the previous audit fails', async () => {
@@ -223,7 +226,7 @@ describe('AuditService', () => {
 
       mockAuditLog.findFirst.mockRejectedValue(error);
 
-      await expect(service.log(input)).rejects.toThrow(error);
+      await expect(service.log(input, tx)).rejects.toThrow(error);
 
       expect(mockAuditLog.create).not.toHaveBeenCalled();
     });
@@ -234,7 +237,7 @@ describe('AuditService', () => {
       mockAuditLog.findFirst.mockResolvedValue(null);
       mockAuditLog.create.mockRejectedValue(error);
 
-      await expect(service.log(input)).rejects.toThrow(error);
+      await expect(service.log(input, tx)).rejects.toThrow(error);
     });
   });
 

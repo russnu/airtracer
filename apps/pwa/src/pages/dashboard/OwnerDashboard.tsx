@@ -2,6 +2,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { assetsApi } from "../../lib/api-client";
 import { Link } from "react-router-dom";
+import { SavedPassportsList } from "../../components/offline/SavedPassportsList";
 
 export function OwnerDashboard() {
   const { user } = useAuth();
@@ -171,6 +172,8 @@ export function OwnerDashboard() {
           </ul>
         )}
       </div>
+
+      <SavedPassportsList />
     </div>
   );
 }

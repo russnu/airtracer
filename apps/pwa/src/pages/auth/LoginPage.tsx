@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { ApiClientError } from '../../lib/api-client';
+import { ApiClientError, isNetworkError } from '../../lib/api-client';
+import { useDeviceOutboxCounts } from '../../hooks/useOutbox';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
@@ -15,6 +16,12 @@ export function LoginPage() {
   
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  // Signed out, so every unsynced record belongs to another session; only the
+  // count is shown.
+  const { data: deviceCounts } = useDeviceOutboxCounts();
+  const unsyncedOnDevice = deviceCounts
+    ? deviceCounts.own + deviceCounts.otherAccounts
+    : 0;
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
@@ -31,6 +38,8 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);
+      } else if (isNetworkError(err)) {
+        setError('You appear to be offline. Connect to the internet to sign in.');
       } else {
         setError('An unexpected error occurred during login.');
       }
@@ -61,6 +70,15 @@ export function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-slate-200">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {unsyncedOnDevice > 0 && (
+              <Alert variant="info" title="Records waiting to sync">
+                {unsyncedOnDevice} service record
+                {unsyncedOnDevice === 1 ? ' is' : 's are'} saved on this
+                device. Sign in with the account that created{' '}
+                {unsyncedOnDevice === 1 ? 'it' : 'them'} to upload{' '}
+                {unsyncedOnDevice === 1 ? 'it' : 'them'}.
+              </Alert>
+            )}
             {error && (
               <Alert variant="error" title="Login Failed">
                 {error}

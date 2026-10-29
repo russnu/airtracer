@@ -157,6 +157,10 @@ export interface ServiceRecord {
 }
 
 export interface CreateServiceRecordPayload {
+  /** Idempotency key (UUID v4): a repeated create returns the stored record. */
+  clientRequestId?: string;
+  /** When the device captured the record; recorded in the audit log only. */
+  clientCapturedAt?: string;
   serviceDate: string;
   serviceType: string;
   description?: string;

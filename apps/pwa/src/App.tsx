@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { UpdatePrompt } from "./components/UpdatePrompt";
+import { OutboxSync } from "./components/offline/OutboxSync";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
@@ -13,6 +15,7 @@ import { PassportPage } from "./pages/passport/PassportPage";
 import { ScannerPage } from "./pages/scanner/ScannerPage";
 import { CreateServiceRecordPage } from "./pages/service-records/CreateServiceRecordPage";
 import { ServiceRecordDetailPage } from "./pages/service-records/ServiceRecordDetailPage";
+import { PendingSyncPage } from "./pages/service-records/PendingSyncPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +65,7 @@ export default function App() {
                   path="/service-records/:id"
                   element={<ServiceRecordDetailPage />}
                 />
+                <Route path="/sync" element={<PendingSyncPage />} />
               </Route>
             </Route>
 
@@ -70,6 +74,8 @@ export default function App() {
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </BrowserRouter>
+        <UpdatePrompt />
+        <OutboxSync />
       </AuthProvider>
     </QueryClientProvider>
   );

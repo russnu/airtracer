@@ -127,10 +127,14 @@ describe('ServicePhotoController', () => {
         expectedResult,
       );
 
-      const result = await controller.findByServiceRecord(serviceRecordId);
+      const result = await controller.findByServiceRecord(
+        serviceRecordId,
+        user,
+      );
 
       expect(servicePhotoServiceMock.findByServiceRecord).toHaveBeenCalledWith(
         serviceRecordId,
+        user.id,
       );
 
       expect(result).toEqual(expectedResult);
@@ -152,10 +156,11 @@ describe('ServicePhotoController', () => {
 
       servicePhotoServiceMock.update.mockResolvedValue(expectedResult);
 
-      const result = await controller.update(photoId, updateDto);
+      const result = await controller.update(photoId, user, updateDto);
 
       expect(servicePhotoServiceMock.update).toHaveBeenCalledWith(
         photoId,
+        user.id,
         updateDto,
       );
 

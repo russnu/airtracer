@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceRecordDto } from './dto/create-service-record.dto';
 import { AuditService } from '../audit/audit.service';
@@ -29,11 +31,53 @@ export class ServiceRecordsService {
     return asset;
   }
   //-------------------------------------------------------------//
+  // Returns the record already stored for this idempotency key, if any. The key
+  // may only be replayed by the same technician for the same asset.
+  private async findExistingRequest(
+    clientRequestId: string,
+    assetId: string,
+    technicianId: string,
+  ) {
+    const existing = await this.prisma.serviceRecord.findUnique({
+      where: { clientRequestId },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    if (
+      existing.technicianId !== technicianId ||
+      existing.assetId !== assetId
+    ) {
+      throw new ConflictException(
+        'This clientRequestId has already been used for a different request.',
+      );
+    }
+
+    return existing;
+  }
+  //-------------------------------------------------------------//
   async create(
     assetId: string,
     technicianId: string,
     dto: CreateServiceRecordDto,
   ) {
+    const { clientRequestId } = dto;
+
+    // A replay returns the stored record even if the asset has since been
+    // deactivated: the record was accepted when it was first received.
+    if (clientRequestId) {
+      const existing = await this.findExistingRequest(
+        clientRequestId,
+        assetId,
+        technicianId,
+      );
+      if (existing) {
+        return existing;
+      }
+    }
+
     // Verify asset if existing
     const asset = await this.verifyAssetExists(assetId);
 
@@ -43,10 +87,38 @@ export class ServiceRecordsService {
       );
     }
 
+    try {
+      return await this.createRecord(assetId, technicianId, dto);
+    } catch (error) {
+      // Two requests with the same key raced; the other one was stored first.
+      if (
+        clientRequestId &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existing = await this.findExistingRequest(
+          clientRequestId,
+          assetId,
+          technicianId,
+        );
+        if (existing) {
+          return existing;
+        }
+      }
+      throw error;
+    }
+  }
+  //-------------------------------------------------------------//
+  private createRecord(
+    assetId: string,
+    technicianId: string,
+    dto: CreateServiceRecordDto,
+  ) {
     // Create service record for asset
     return this.prisma.$transaction(async (tx) => {
       const serviceRecord = await tx.serviceRecord.create({
         data: {
+          clientRequestId: dto.clientRequestId,
           assetId,
           technicianId,
           serviceDate: new Date(dto.serviceDate),
@@ -82,6 +154,9 @@ export class ServiceRecordsService {
             supplyAirTemp: serviceRecord.supplyAirTemp,
             findings: serviceRecord.findings,
             recommendations: serviceRecord.recommendations,
+            clientRequestId: serviceRecord.clientRequestId,
+            // Reported by the device; informational only.
+            clientCapturedAt: dto.clientCapturedAt ?? null,
           },
         },
         tx,

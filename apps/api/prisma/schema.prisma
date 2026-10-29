@@ -239,8 +239,12 @@ model ServiceRecord {
   findings        String?
   recommendations String?
 
-  // Service Photos 
+  // Service Photos
   photos ServicePhoto[]
+
+  // Client-generated UUID that makes create requests idempotent, so an
+  // offline-queued record retried after a lost response is stored once.
+  clientRequestId String? @unique
 
   // Audit
   createdAt DateTime @default(now())

@@ -1,11 +1,23 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { qrApi, ApiClientError } from "../../lib/api-client";
-import type {
-  PublicPassportResponse,
-  PublicServiceRecord,
-} from "../../types/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { PublicServiceRecord } from "../../types/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { useOutbox } from "../../hooks/useOutbox";
+import {
+  loadPassport,
+  PassportUnavailableError,
+  removeSavedPassport,
+  savePassport,
+} from "../../lib/offline/passports";
+import type { PassportView } from "../../lib/offline/passports";
+import {
+  isQuotaExceededError,
+  requestPersistentStorage,
+} from "../../lib/offline/db";
+import { OfflineBanner } from "../../components/OfflineBanner";
 import { Card } from "../../components/ui/Card";
+import { Button } from "../../components/ui/Button";
 import { Spinner } from "../../components/ui/Spinner";
 import { Alert } from "../../components/ui/Alert";
 import {
@@ -21,14 +33,65 @@ import { DataIcon } from "../../components/ui/DataIcon";
 
 export function PassportPage() {
   const { token } = useParams<{ token: string }>();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const userId = user?.id ?? null;
+  const queryClient = useQueryClient();
+  const queryKey = ["passport", token, userId];
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const { items: outboxItems } = useOutbox();
 
-  const { data, isLoading, error } = useQuery<PublicPassportResponse, Error>({
-    queryKey: ["passport", token],
-    queryFn: () => qrApi.getPublicPassport(token!),
-    enabled: !!token,
+  const { data: view, isLoading, error } = useQuery<PassportView, Error>({
+    queryKey,
+    queryFn: () => loadPassport(token!, userId),
+    // Wait for the session so the saved-copy fallback knows the user.
+    enabled: !!token && !isAuthLoading,
+    // The query function falls back to the saved copy itself, so it must run
+    // even when the browser reports no connection.
+    networkMode: "always",
+    retry: (failureCount, err) =>
+      !(err instanceof PassportUnavailableError) && failureCount < 1,
   });
 
-  if (isLoading) {
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!view || !userId || !token) {
+        throw new Error("Sign in to save passports for offline use.");
+      }
+      const saved = await savePassport(token, view.data, userId);
+      await requestPersistentStorage();
+      return saved;
+    },
+    onSuccess: (saved) => {
+      setSaveError(null);
+      queryClient.setQueryData<PassportView>(queryKey, (current) =>
+        current ? { ...current, saved } : current,
+      );
+      queryClient.invalidateQueries({ queryKey: ["saved-passports"] });
+    },
+    onError: (err: Error) => {
+      setSaveError(
+        isQuotaExceededError(err)
+          ? "This device is out of storage space. Remove other saved passports and try again."
+          : "Could not save this passport on this device.",
+      );
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (assetId: string) => removeSavedPassport(assetId),
+    onSuccess: () => {
+      setSaveError(null);
+      queryClient.setQueryData<PassportView>(queryKey, (current) =>
+        current ? { ...current, saved: null } : current,
+      );
+      queryClient.invalidateQueries({ queryKey: ["saved-passports"] });
+    },
+    onError: () => {
+      setSaveError("Could not remove the offline copy.");
+    },
+  });
+
+  if (isLoading || isAuthLoading) {
     return (
       <div className="flex justify-center items-center h-screen bg-slate-50">
         <Spinner size="lg" />
@@ -36,28 +99,36 @@ export function PassportPage() {
     );
   }
 
-  if (error || !data) {
-    const isNotFound =
-      error instanceof ApiClientError && error.statusCode === 404;
+  if (error || !view) {
+    const unavailable = error instanceof PassportUnavailableError;
     return (
       <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
         <Alert
           variant="error"
-          title={isNotFound ? "Passport Not Found" : "Error"}
+          title={unavailable ? "Passport Not Available" : "Error"}
           className="mt-8"
         >
-          {isNotFound
+          {unavailable
             ? "The QR code you scanned is either invalid, inactive, or not found in our system."
             : error?.message || "Failed to load equipment passport."}
+          {unavailable && error.removedOfflineCopy && (
+            <> The offline copy saved on this device has been removed.</>
+          )}
         </Alert>
       </div>
     );
   }
 
-  const { asset, serviceHistory } = data;
+  const { asset, serviceHistory } = view.data;
+  const { saved } = view;
+  const pendingForAsset = outboxItems.filter(
+    (item) => item.assetId === asset.id && item.status !== "synced",
+  );
+  const isSavedCopy = view.source === "saved";
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
+      <OfflineBanner />
       {/* Header */}
       <header className="bg-slate-900 text-white py-6 px-4 shadow-md">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
@@ -73,6 +144,57 @@ export function PassportPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
+        {isSavedCopy && saved && (
+          <Alert variant="warning" title="Offline copy">
+            Saved {new Date(saved.savedAt).toLocaleString()}, last updated{" "}
+            {new Date(saved.refreshedAt).toLocaleString()}. It may be out of
+            date, and photos are only available online.
+          </Alert>
+        )}
+
+        {/* Offline save */}
+        {userId && (
+          <section>
+            {saveError && (
+              <Alert
+                variant="error"
+                className="mb-3"
+                onDismiss={() => setSaveError(null)}
+              >
+                {saveError}
+              </Alert>
+            )}
+            <Card
+              padding="sm"
+              className="flex flex-col sm:flex-row items-center justify-between gap-3"
+            >
+              <p className="text-sm text-slate-600 text-center sm:text-left">
+                {saved
+                  ? "Saved on this device for offline viewing (text only)."
+                  : "Save this passport to view it without a connection."}
+              </p>
+              {saved ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isLoading={removeMutation.isPending}
+                  onClick={() => removeMutation.mutate(saved.assetId)}
+                >
+                  Remove offline copy
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  isLoading={saveMutation.isPending}
+                  onClick={() => saveMutation.mutate()}
+                >
+                  Save for offline
+                </Button>
+              )}
+            </Card>
+          </section>
+        )}
+
         {/* Equipment Info */}
         <section>
           <h2 className="text-lg font-semibold text-slate-900 mb-4">
@@ -173,6 +295,51 @@ export function PassportPage() {
           </Card>
         </section>
 
+        {/* Records saved on this device but not uploaded yet */}
+        {pendingForAsset.length > 0 && (
+          <section>
+            <h2 className="text-lg font-semibold text-slate-900 mb-1">
+              Pending sync on this device
+            </h2>
+            <p className="text-sm text-slate-500 mb-4">
+              Not part of the service history until uploaded.{" "}
+              <Link to="/sync" className="text-accent-700 underline">
+                View pending sync
+              </Link>
+            </p>
+            <ul className="space-y-2">
+              {pendingForAsset.map((item) => (
+                <li key={item.clientRequestId}>
+                  <Card
+                    padding="sm"
+                    className="flex items-center justify-between gap-3 border-dashed"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {item.payload.serviceType}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {new Date(item.payload.serviceDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium ${
+                        item.status === "needs_attention"
+                          ? "text-error-700"
+                          : "text-warning-600"
+                      }`}
+                    >
+                      {item.status === "needs_attention"
+                        ? "Needs attention"
+                        : "Waiting to sync"}
+                    </span>
+                  </Card>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Service History */}
         <section>
           <h2 className="text-lg font-semibold text-slate-900 mb-4">
@@ -186,7 +353,11 @@ export function PassportPage() {
           ) : (
             <div className="space-y-4">
               {serviceHistory.map((record) => (
-                <ServiceRecordItem key={record.id} record={record} />
+                <ServiceRecordItem
+                  key={record.id}
+                  record={record}
+                  offlinePhotoCount={view.photoCounts[record.id] ?? 0}
+                />
               ))}
             </div>
           )}
@@ -196,7 +367,14 @@ export function PassportPage() {
   );
 }
 
-function ServiceRecordItem({ record }: { record: PublicServiceRecord }) {
+function ServiceRecordItem({
+  record,
+  offlinePhotoCount,
+}: {
+  record: PublicServiceRecord;
+  /** Photos left out of a saved offline copy. */
+  offlinePhotoCount: number;
+}) {
   const m = record.measurements;
   const hasMeasurements =
     m &&
@@ -367,6 +545,13 @@ function ServiceRecordItem({ record }: { record: PublicServiceRecord }) {
                 ))}
               </div>
             </div>
+          )}
+
+          {offlinePhotoCount > 0 && (
+            <p className="text-xs text-slate-500">
+              {offlinePhotoCount} photo{offlinePhotoCount === 1 ? "" : "s"} —
+              available online.
+            </p>
           )}
         </div>
       </details>

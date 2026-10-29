@@ -1,15 +1,84 @@
 import { useState } from "react";
 import { Link, Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { OfflineBanner } from "../OfflineBanner";
+import { SyncStatusIndicator } from "../offline/SyncStatusIndicator";
+import { Button } from "../ui/Button";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
+import { useSyncNow } from "../../hooks/useOutbox";
+import {
+  countUnsynced,
+  discardUnsyncedForUser,
+} from "../../lib/offline/outbox";
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout, hasRole } = useAuth();
   const navigate = useNavigate();
+  const isOnline = useOnlineStatus();
+  const syncNow = useSyncNow();
+  const [unsyncedOnLogout, setUnsyncedOnLogout] = useState(0);
+  const [isSyncingForLogout, setIsSyncingForLogout] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
-  const handleLogout = () => {
-    logout();
+  const finishLogout = async () => {
+    await logout();
     navigate("/login");
+  };
+
+  // Logging out with unsynced records is blocked until the user syncs them
+  // or explicitly discards them.
+  const handleLogout = async () => {
+    if (user) {
+      try {
+        const { own } = await countUnsynced(user.id);
+        if (own > 0) {
+          setUnsyncedOnLogout(own);
+          return;
+        }
+      } catch (error) {
+        console.warn("AirTracer: could not check for unsynced records.", error);
+      }
+    }
+    await finishLogout();
+  };
+
+  const handleSyncBeforeLogout = async () => {
+    if (!user) return;
+    setIsSyncingForLogout(true);
+    setLogoutError(null);
+    try {
+      await syncNow({ force: true });
+      const { own } = await countUnsynced(user.id);
+      if (own === 0) {
+        setUnsyncedOnLogout(0);
+        await finishLogout();
+      } else {
+        setUnsyncedOnLogout(own);
+        setLogoutError(
+          `${own} record${own === 1 ? " is" : "s are"} still not synced.`,
+        );
+      }
+    } catch (error) {
+      console.warn("AirTracer: sync before logout failed.", error);
+      setLogoutError("Sync failed. Check your connection and try again.");
+    } finally {
+      setIsSyncingForLogout(false);
+    }
+  };
+
+  const handleDiscardAndLogout = async () => {
+    if (!user) return;
+    try {
+      await discardUnsyncedForUser(user.id);
+    } catch (error) {
+      console.warn("AirTracer: could not discard unsynced records.", error);
+      setLogoutError("The records could not be discarded.");
+      return;
+    }
+    setUnsyncedOnLogout(0);
+    await finishLogout();
   };
 
   const navItems = [];
@@ -21,6 +90,7 @@ export function AppLayout() {
     navItems.push({ name: "Dashboard", path: "/dashboard" });
     navItems.push({ name: "Scan QR", path: "/scan" });
     navItems.push({ name: "Service Records", path: "/service-records" });
+    navItems.push({ name: "Pending sync", path: "/sync" });
   } else if (hasRole("ADMIN")) {
     navItems.push({ name: "Dashboard", path: "/dashboard" });
     navItems.push({ name: "Users", path: "/users" });
@@ -74,6 +144,7 @@ export function AppLayout() {
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
               <div className="relative flex items-center gap-4">
+                <SyncStatusIndicator />
                 <span className="text-sm font-medium text-slate-700">
                   {user?.firstName} {user?.lastName}
                 </span>
@@ -89,7 +160,8 @@ export function AppLayout() {
                 </button>
               </div>
             </div>
-            <div className="-mr-2 flex items-center sm:hidden">
+            <div className="-mr-2 flex items-center gap-2 sm:hidden">
+              <SyncStatusIndicator />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
@@ -181,11 +253,45 @@ export function AppLayout() {
         )}
       </header>
 
+      <OfflineBanner />
+
       <main className="flex-1 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Outlet />
         </div>
       </main>
+
+      <ConfirmDialog
+        open={unsyncedOnLogout > 0}
+        title="Records not synced yet"
+        confirmLabel={`Discard ${unsyncedOnLogout} and log out`}
+        confirmPhrase="DISCARD"
+        onConfirm={handleDiscardAndLogout}
+        onCancel={() => {
+          setUnsyncedOnLogout(0);
+          setLogoutError(null);
+        }}
+        actions={
+          isOnline ? (
+            <Button
+              variant="secondary"
+              onClick={handleSyncBeforeLogout}
+              isLoading={isSyncingForLogout}
+            >
+              Sync now
+            </Button>
+          ) : undefined
+        }
+      >
+        <p>
+          {unsyncedOnLogout} service record
+          {unsyncedOnLogout === 1 ? " is" : "s are"} saved on this device but
+          not uploaded yet. Logging out now deletes{" "}
+          {unsyncedOnLogout === 1 ? "it" : "them"}.
+        </p>
+        {!isOnline && <p>Reconnect to sync before logging out.</p>}
+        {logoutError && <p className="text-error-700">{logoutError}</p>}
+      </ConfirmDialog>
     </div>
   );
 }

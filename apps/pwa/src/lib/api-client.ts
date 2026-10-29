@@ -51,6 +51,21 @@ class ApiClientError extends Error {
   }
 }
 
+/**
+ * The request never reached the API or got no response: the device is offline,
+ * the server is unreachable, or the request timed out.
+ */
+class NetworkError extends Error {
+  constructor(cause: unknown) {
+    super('Unable to reach the AirTracer server.', { cause });
+    this.name = 'NetworkError';
+  }
+}
+
+export function isNetworkError(error: unknown): error is NetworkError {
+  return error instanceof NetworkError;
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
@@ -69,10 +84,15 @@ async function request<T>(
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+  } catch (error) {
+    throw new NetworkError(error);
+  }
 
   if (!response.ok) {
     let errorData: ApiError | undefined;
@@ -201,10 +221,12 @@ export const serviceRecordsApi = {
   create(
     assetId: string,
     data: CreateServiceRecordPayload,
+    signal?: AbortSignal,
   ): Promise<ServiceRecord> {
     return request(`/assets/${assetId}/service-records`, {
       method: 'POST',
       body: JSON.stringify(data),
+      signal,
     });
   },
 
@@ -265,4 +287,4 @@ export const usersApi = {
   },
 };
 
-export { ApiClientError };
+export { ApiClientError, NetworkError };

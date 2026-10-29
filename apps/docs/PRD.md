@@ -101,6 +101,8 @@ The initial application should support:
 - Persistent cloud-backed data storage.
 - Responsive layouts and PWA installation.
 - Basic caching and appropriate offline handling.
+- Saving an equipment passport on a device for offline viewing (text only; photos require a connection).
+- Creating service records offline, saved on the device and synchronized automatically when reconnected (see §8.3).
 - Administrative functionality required by the approved requirements.
 
 ### 3.2 Out of Scope
@@ -115,7 +117,7 @@ Unless explicitly approved as a later requirement, do not implement:
 - Payment processing, technician marketplaces, or service booking.
 - GPS tracking or continuous technician location monitoring.
 - A native Android or iOS application separate from the PWA.
-- Guaranteed full offline operation with automatic synchronization of every type of data.
+- Guaranteed full offline operation with automatic synchronization of every type of data. Only the offline workflows listed in §3.1 are in scope; editing records, status changes, photo uploads, and owner or administrative actions require a connection.
 - Features that have no support in the PRD or explicit development instructions.
 
 Measurements are entered manually by users. They must not be represented as automatically collected sensor readings.
@@ -375,8 +377,10 @@ Do not claim specific performance targets unless they have been defined and can 
 - Support caching of appropriate application resources.
 - Handle service-worker updates without unexpectedly losing unsaved work.
 - Provide sensible behavior when offline.
+- Keep a signed-in user signed in when the app is opened offline, until the session expires.
+- Never cache authenticated API responses in the service worker.
 
-Caching application files does not mean that protected API data or write operations automatically work offline.
+Caching application files does not mean that protected API data or write operations automatically work offline. Only the workflows described in §8.3 work offline.
 
 ### 5.7 Accessibility
 
@@ -525,9 +529,21 @@ Server data should be handled consistently, including loading states, error stat
 
 ### 8.3 Offline Behavior
 
-The initial PWA should support appropriate resource caching and graceful handling of connectivity loss.
+The PWA supports appropriate resource caching and graceful handling of connectivity loss, plus two approved offline workflows.
 
-Do not implement a complex offline-first architecture, local write queue, synchronization engine, or conflict-resolution mechanism without an approved requirement.
+**Offline passports.** A signed-in user can save a passport on the device. Saved copies contain only the public passport fields and service history text; photos are shown only online. Saved copies are refreshed when the device is online and labelled with when they were last updated. If the QR code is deactivated or regenerated, the saved copy is deleted. Saved copies belong to the user who saved them and are removed on logout or when another account signs in.
+
+**Offline service records.** A technician can create a service record without a connection. The record is saved on the device first, then sent to the API automatically when the connection returns. Rules:
+
+- Service records are append-only, so offline creation cannot overwrite another user's work. There is no conflict resolution beyond this.
+- Each record carries a client-generated idempotency key, so a retried upload is stored once.
+- The API re-checks authentication, authorization, and asset eligibility when the record arrives. A record the API rejects is kept on the device and shown to the technician, who can correct and retry it or discard it explicitly. Records are never discarded automatically.
+- Records sync only for the account that created them. Another account on the same device sees only a count.
+- Logging out with unsynced records is blocked until they are synced or explicitly discarded.
+- An expired session must be renewed by signing in before records can sync.
+- The device-reported capture time is recorded in the audit log for information; the server does not trust the device clock.
+
+Photo uploads, record edits, status changes, and other write operations remain online-only. Do not extend the offline queue to them without an approved requirement.
 
 ### 8.4 Dependencies
 

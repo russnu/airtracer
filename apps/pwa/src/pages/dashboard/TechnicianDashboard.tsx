@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { SavedPassportsList } from '../../components/offline/SavedPassportsList';
 
 export function TechnicianDashboard() {
   const { user } = useAuth();
@@ -74,6 +75,8 @@ export function TechnicianDashboard() {
           </div>
         </div>
       </div>
+
+      <SavedPassportsList />
     </div>
   );
 }

@@ -1,4 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
+import {
+  ALLOWED_PHOTO_MIME_TYPES,
+  detectImageMimeType,
+  MAX_PHOTO_SIZE_BYTES,
+} from './utils/image-file.util';
 import { CreateServicePhotoDto } from './dto/create-service-photo.dto';
 import { UpdateServicePhotoDto } from './dto/update-service-photo.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,20 +25,66 @@ export class ServicePhotoService {
     private readonly storageService: StorageService,
   ) {}
   //-------------------------------------------------------------//
-  async upload(
-    serviceRecordId: string,
-    userId: string,
-    file: Express.Multer.File,
-    dto: CreateServicePhotoDto,
-  ) {
-    // Check that the service record exists
+  private async getServiceRecord(serviceRecordId: string) {
     const serviceRecord = await this.prisma.serviceRecord.findUnique({
       where: { id: serviceRecordId },
+      include: {
+        asset: {
+          select: {
+            ownerId: true,
+          },
+        },
+      },
     });
 
     if (!serviceRecord) {
       throw new NotFoundException('Service record not found');
     }
+
+    return serviceRecord;
+  }
+  //-------------------------------------------------------------//
+  // Photos are evidence: only the technician who created the service record
+  // may add, edit, or remove them.
+  private assertRecordTechnician(
+    serviceRecord: { technicianId: string },
+    userId: string,
+  ) {
+    if (serviceRecord.technicianId !== userId) {
+      throw new ForbiddenException(
+        'Only the technician who created this service record can change its photos.',
+      );
+    }
+  }
+  //-------------------------------------------------------------//
+  private validateImage(file: Express.Multer.File | undefined) {
+    if (!file) {
+      throw new BadRequestException('A photo file is required.');
+    }
+
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      throw new PayloadTooLargeException('Photos must be 10 MB or smaller.');
+    }
+
+    const detectedType = detectImageMimeType(file.buffer);
+    if (!detectedType || detectedType !== file.mimetype) {
+      throw new BadRequestException(
+        `Photos must be one of: ${ALLOWED_PHOTO_MIME_TYPES.join(', ')}.`,
+      );
+    }
+
+    return file;
+  }
+  //-------------------------------------------------------------//
+  async upload(
+    serviceRecordId: string,
+    userId: string,
+    uploadedFile: Express.Multer.File | undefined,
+    dto: CreateServicePhotoDto,
+  ) {
+    const serviceRecord = await this.getServiceRecord(serviceRecordId);
+    this.assertRecordTechnician(serviceRecord, userId);
+    const file = this.validateImage(uploadedFile);
 
     // Store the file
     const directory = `service-records/${serviceRecordId}`;
@@ -86,14 +143,16 @@ export class ServicePhotoService {
     }
   }
   //-------------------------------------------------------------//
-  async findByServiceRecord(serviceRecordId: string) {
-    // Check that the service record exists
-    const serviceRecord = await this.prisma.serviceRecord.findUnique({
-      where: { id: serviceRecordId },
-    });
+  async findByServiceRecord(serviceRecordId: string, userId: string) {
+    const serviceRecord = await this.getServiceRecord(serviceRecordId);
 
-    if (!serviceRecord) {
-      throw new NotFoundException('Service record not found');
+    if (
+      serviceRecord.asset.ownerId !== userId &&
+      serviceRecord.technicianId !== userId
+    ) {
+      throw new ForbiddenException(
+        'You do not have access to the photos of this service record.',
+      );
     }
 
     const photos = await this.prisma.servicePhoto.findMany({
@@ -118,14 +177,23 @@ export class ServicePhotoService {
     );
   }
   //-------------------------------------------------------------//
-  async update(id: string, dto: UpdateServicePhotoDto) {
+  async update(id: string, userId: string, dto: UpdateServicePhotoDto) {
     const photo = await this.prisma.servicePhoto.findUnique({
       where: { id },
+      include: {
+        serviceRecord: {
+          select: {
+            technicianId: true,
+          },
+        },
+      },
     });
 
     if (!photo) {
       throw new NotFoundException('Service photo not found');
     }
+
+    this.assertRecordTechnician(photo.serviceRecord, userId);
 
     return this.prisma.servicePhoto.update({
       where: { id },
@@ -142,6 +210,7 @@ export class ServicePhotoService {
         serviceRecord: {
           select: {
             assetId: true,
+            technicianId: true,
           },
         },
       },
@@ -150,6 +219,8 @@ export class ServicePhotoService {
     if (!photo) {
       throw new NotFoundException('Service photo not found');
     }
+
+    this.assertRecordTechnician(photo.serviceRecord, userId);
 
     // Delete DB record and create audit log atomically.
     const deletedPhoto = await this.prisma.$transaction(async (tx) => {

@@ -73,3 +73,33 @@ export default defineConfig([
 ])
 
 ```
+
+## Offline support
+
+AirTracer supports two offline workflows (see `apps/docs/PRD.md` §8.3):
+
+- **Saved passports.** Signed-in users can save a passport from its page. Saved copies are text only and live in IndexedDB.
+- **Offline service records.** New records are saved to an IndexedDB outbox first, then uploaded automatically. Pending records are listed at `/sync`.
+
+The offline data layer is in `src/lib/offline/`. Its unit tests run in Node with an in-memory IndexedDB:
+
+```bash
+pnpm --filter pwa test
+```
+
+### Testing offline behaviour manually
+
+The service worker is only registered in production builds:
+
+```bash
+pnpm --filter pwa build
+pnpm --filter pwa preview
+```
+
+Then in the browser's developer tools:
+
+1. **Application → Service workers:** confirm the worker is active. **Cache storage** should contain the app shell and fonts only, never API responses.
+2. **Network → Offline:** reload. You should stay signed in, and an offline banner should appear.
+3. Open a saved passport while offline: the saved copy is shown with its last-updated time.
+4. Create a service record while offline: it appears on `/sync`. Go back online: it uploads once and disappears from the pending list.
+5. **Application → IndexedDB → airtracer:** inspect the `savedPassports`, `outbox`, and `meta` stores.

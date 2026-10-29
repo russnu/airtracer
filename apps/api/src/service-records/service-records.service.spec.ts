@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma } from '../../generated/prisma/client';
 
 import { ServiceRecordsService } from './service-records.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -70,6 +75,7 @@ describe('ServiceRecordsService', () => {
     supplyAirTemp: 15,
     findings: 'Unit is operating normally',
     recommendations: 'Continue regular maintenance',
+    clientRequestId: null as string | null,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -131,6 +137,7 @@ describe('ServiceRecordsService', () => {
 
       expect(txMock.serviceRecord.create).toHaveBeenCalledWith({
         data: {
+          clientRequestId: undefined,
           assetId,
           technicianId,
           serviceDate: new Date(createDto.serviceDate),
@@ -166,12 +173,108 @@ describe('ServiceRecordsService', () => {
             supplyAirTemp: serviceRecord.supplyAirTemp,
             findings: serviceRecord.findings,
             recommendations: serviceRecord.recommendations,
+            clientRequestId: null,
+            clientCapturedAt: null,
           },
         },
         txMock,
       );
 
       expect(result).toEqual(serviceRecord);
+    });
+
+    describe('with a clientRequestId', () => {
+      const clientRequestId = '1b4e28ba-2fa1-4d3b-9c5a-6f0e3b2a9d11';
+      const idempotentDto: CreateServiceRecordDto = {
+        ...createDto,
+        clientRequestId,
+        clientCapturedAt: '2026-08-20T08:30:00.000Z',
+      };
+      const storedRecord = { ...serviceRecord, clientRequestId };
+
+      it('should store the key and record the capture time in the audit log', async () => {
+        prismaMock.serviceRecord.findUnique.mockResolvedValue(null);
+        prismaMock.asset.findUnique.mockResolvedValue(asset);
+        txMock.serviceRecord.create.mockResolvedValue(storedRecord);
+
+        await service.create(assetId, technicianId, idempotentDto);
+
+        expect(txMock.serviceRecord.create).toHaveBeenCalledWith({
+          data: expect.objectContaining({ clientRequestId }),
+        });
+        expect(auditServiceMock.log).toHaveBeenCalledWith(
+          expect.objectContaining({
+            payload: expect.objectContaining({
+              clientRequestId,
+              clientCapturedAt: '2026-08-20T08:30:00.000Z',
+            }),
+          }),
+          txMock,
+        );
+      });
+
+      it('should return the stored record on a replay without creating another', async () => {
+        prismaMock.serviceRecord.findUnique.mockResolvedValue(storedRecord);
+
+        const result = await service.create(
+          assetId,
+          technicianId,
+          idempotentDto,
+        );
+
+        expect(result).toEqual(storedRecord);
+        expect(prismaMock.serviceRecord.findUnique).toHaveBeenCalledWith({
+          where: { clientRequestId },
+        });
+        // Checked before the asset, so a replay succeeds even if the asset
+        // was deactivated after the record was first stored.
+        expect(prismaMock.asset.findUnique).not.toHaveBeenCalled();
+        expect(prismaMock.$transaction).not.toHaveBeenCalled();
+      });
+
+      it('should reject a key already used by another technician', async () => {
+        prismaMock.serviceRecord.findUnique.mockResolvedValue({
+          ...storedRecord,
+          technicianId: 'technician-2',
+        });
+
+        await expect(
+          service.create(assetId, technicianId, idempotentDto),
+        ).rejects.toThrow(ConflictException);
+        expect(prismaMock.$transaction).not.toHaveBeenCalled();
+      });
+
+      it('should reject a key already used for another asset', async () => {
+        prismaMock.serviceRecord.findUnique.mockResolvedValue({
+          ...storedRecord,
+          assetId: 'asset-2',
+        });
+
+        await expect(
+          service.create(assetId, technicianId, idempotentDto),
+        ).rejects.toThrow(ConflictException);
+      });
+
+      it('should return the winning record when a concurrent request stored it first', async () => {
+        prismaMock.serviceRecord.findUnique
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(storedRecord);
+        prismaMock.asset.findUnique.mockResolvedValue(asset);
+        prismaMock.$transaction.mockRejectedValueOnce(
+          new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+            code: 'P2002',
+            clientVersion: 'test',
+          }),
+        );
+
+        const result = await service.create(
+          assetId,
+          technicianId,
+          idempotentDto,
+        );
+
+        expect(result).toEqual(storedRecord);
+      });
     });
 
     it('should throw NotFoundException when the asset does not exist', async () => {

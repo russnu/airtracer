@@ -1,11 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 
 import { UsersModule } from './users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { QrModule } from './qr/qr.module';
@@ -33,6 +33,16 @@ import { AuditModule } from './audit/audit.module';
     AuditModule,
   ],
   providers: [
+    // Registered here rather than in main.ts so e2e tests built from
+    // AppModule validate requests the same way production does.
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

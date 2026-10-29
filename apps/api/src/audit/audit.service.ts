@@ -1,5 +1,3 @@
-// TODO: transaction
-
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
 
@@ -15,17 +13,18 @@ export class AuditService {
     return createHash('sha256').update(JSON.stringify(data)).digest('hex');
   }
   //-------------------------------------------------------------//
-  async log(
-    input: CreateAuditLogInput,
-    tx: Prisma.TransactionClient = this.prisma,
-  ) {
-    const previousAudit = await this.prisma.auditLog.findFirst({
+  // Must be called inside the caller's transaction so the entry commits or rolls
+  // back with the change it records.
+  async log(input: CreateAuditLogInput, tx: Prisma.TransactionClient) {
+    // Serialize writers per asset until this transaction ends, so concurrent
+    // entries cannot both chain onto the same previous hash.
+    await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${input.assetId}))`;
+
+    const previousAudit = await tx.auditLog.findFirst({
       where: {
         assetId: input.assetId,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
 
     const previousHash = previousAudit?.hash ?? null;

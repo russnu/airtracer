@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 
 import { ServicePhotoService } from './service-photo.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -37,16 +42,34 @@ describe('ServicePhotoService', () => {
   const userId = 'technician-1';
   const assetId = 'asset-1';
 
+  const ownerId = 'owner-1';
+
   const serviceRecord = {
     id: serviceRecordId,
     assetId,
+    technicianId: userId,
+    asset: { ownerId },
   };
 
+  const serviceRecordQuery = {
+    where: {
+      id: serviceRecordId,
+    },
+    include: {
+      asset: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  };
+
+  // Starts with the JPEG signature so content sniffing accepts it.
   const uploadedFile = {
     originalname: 'before.jpg',
     mimetype: 'image/jpeg',
     size: 1024,
-    buffer: Buffer.from('test'),
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
   } as Express.Multer.File;
 
   const createDto = {
@@ -124,11 +147,9 @@ describe('ServicePhotoService', () => {
         createDto,
       );
 
-      expect(prismaMock.serviceRecord.findUnique).toHaveBeenCalledWith({
-        where: {
-          id: serviceRecordId,
-        },
-      });
+      expect(prismaMock.serviceRecord.findUnique).toHaveBeenCalledWith(
+        serviceRecordQuery,
+      );
 
       expect(storageServiceMock.save).toHaveBeenCalledWith(
         uploadedFile,
@@ -189,6 +210,72 @@ describe('ServicePhotoService', () => {
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
 
+    it('should reject an upload by a technician who did not create the record', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue({
+        ...serviceRecord,
+        technicianId: 'technician-2',
+      });
+
+      await expect(
+        service.upload(serviceRecordId, userId, uploadedFile, createDto),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(storageServiceMock.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject a request without a file', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+
+      await expect(
+        service.upload(serviceRecordId, userId, undefined, createDto),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(storageServiceMock.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject a file whose content is not an allowed image', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+
+      await expect(
+        service.upload(
+          serviceRecordId,
+          userId,
+          { ...uploadedFile, buffer: Buffer.from('<svg></svg>') },
+          createDto,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(storageServiceMock.save).not.toHaveBeenCalled();
+    });
+
+    it('should reject a file whose declared type does not match its content', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+
+      await expect(
+        service.upload(
+          serviceRecordId,
+          userId,
+          { ...uploadedFile, mimetype: 'image/png' },
+          createDto,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject a file larger than 10 MB', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+
+      await expect(
+        service.upload(
+          serviceRecordId,
+          userId,
+          { ...uploadedFile, size: 10 * 1024 * 1024 + 1 },
+          createDto,
+        ),
+      ).rejects.toThrow(PayloadTooLargeException);
+
+      expect(storageServiceMock.save).not.toHaveBeenCalled();
+    });
+
     it('should delete the uploaded file when the database transaction fails', async () => {
       const storageKey = `service-records/${serviceRecordId}/before.jpg`;
 
@@ -247,13 +334,11 @@ describe('ServicePhotoService', () => {
         .mockResolvedValueOnce('https://storage/photo-before.jpg')
         .mockResolvedValueOnce('https://storage/photo-after.jpg');
 
-      const result = await service.findByServiceRecord(serviceRecordId);
+      const result = await service.findByServiceRecord(serviceRecordId, userId);
 
-      expect(prismaMock.serviceRecord.findUnique).toHaveBeenCalledWith({
-        where: {
-          id: serviceRecordId,
-        },
-      });
+      expect(prismaMock.serviceRecord.findUnique).toHaveBeenCalledWith(
+        serviceRecordQuery,
+      );
 
       expect(prismaMock.servicePhoto.findMany).toHaveBeenCalledWith({
         where: {
@@ -294,18 +379,37 @@ describe('ServicePhotoService', () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
       prismaMock.servicePhoto.findMany.mockResolvedValue([]);
 
-      const result = await service.findByServiceRecord(serviceRecordId);
+      const result = await service.findByServiceRecord(serviceRecordId, userId);
 
       expect(result).toEqual([]);
 
       expect(storageServiceMock.getUrl).not.toHaveBeenCalled();
     });
 
+    it('should allow the asset owner to list photos', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+      prismaMock.servicePhoto.findMany.mockResolvedValue([]);
+
+      await expect(
+        service.findByServiceRecord(serviceRecordId, ownerId),
+      ).resolves.toEqual([]);
+    });
+
+    it('should reject a user who is neither the owner nor the technician', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+
+      await expect(
+        service.findByServiceRecord(serviceRecordId, 'someone-else'),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prismaMock.servicePhoto.findMany).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException when the service record does not exist', async () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.findByServiceRecord(serviceRecordId),
+        service.findByServiceRecord(serviceRecordId, userId),
       ).rejects.toThrow(new NotFoundException('Service record not found'));
 
       expect(prismaMock.servicePhoto.findMany).not.toHaveBeenCalled();
@@ -327,14 +431,24 @@ describe('ServicePhotoService', () => {
     };
 
     it('should update the photo successfully', async () => {
-      prismaMock.servicePhoto.findUnique.mockResolvedValue(photo);
+      prismaMock.servicePhoto.findUnique.mockResolvedValue({
+        ...photo,
+        serviceRecord: { technicianId: userId },
+      });
       prismaMock.servicePhoto.update.mockResolvedValue(updatedPhoto);
 
-      const result = await service.update(photoId, updateDto);
+      const result = await service.update(photoId, userId, updateDto);
 
       expect(prismaMock.servicePhoto.findUnique).toHaveBeenCalledWith({
         where: {
           id: photoId,
+        },
+        include: {
+          serviceRecord: {
+            select: {
+              technicianId: true,
+            },
+          },
         },
       });
 
@@ -351,8 +465,21 @@ describe('ServicePhotoService', () => {
     it('should throw NotFoundException when the photo does not exist', async () => {
       prismaMock.servicePhoto.findUnique.mockResolvedValue(null);
 
-      await expect(service.update(photoId, updateDto)).rejects.toThrow(
+      await expect(service.update(photoId, userId, updateDto)).rejects.toThrow(
         new NotFoundException('Service photo not found'),
+      );
+
+      expect(prismaMock.servicePhoto.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject an update by another technician', async () => {
+      prismaMock.servicePhoto.findUnique.mockResolvedValue({
+        ...photo,
+        serviceRecord: { technicianId: 'technician-2' },
+      });
+
+      await expect(service.update(photoId, userId, updateDto)).rejects.toThrow(
+        ForbiddenException,
       );
 
       expect(prismaMock.servicePhoto.update).not.toHaveBeenCalled();
@@ -369,6 +496,7 @@ describe('ServicePhotoService', () => {
         ...photo,
         serviceRecord: {
           assetId,
+          technicianId: userId,
         },
       });
 
@@ -386,6 +514,7 @@ describe('ServicePhotoService', () => {
           serviceRecord: {
             select: {
               assetId: true,
+              technicianId: true,
             },
           },
         },
@@ -421,6 +550,7 @@ describe('ServicePhotoService', () => {
         ...photo,
         serviceRecord: {
           assetId,
+          technicianId: userId,
         },
       });
     });
@@ -436,6 +566,23 @@ describe('ServicePhotoService', () => {
       expect(storageServiceMock.delete).not.toHaveBeenCalled();
     });
 
+    it('should reject removal by anyone other than the record technician', async () => {
+      prismaMock.servicePhoto.findUnique.mockResolvedValue({
+        ...photo,
+        serviceRecord: {
+          assetId,
+          technicianId: 'technician-2',
+        },
+      });
+
+      await expect(service.remove(photoId, userId)).rejects.toThrow(
+        ForbiddenException,
+      );
+
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+      expect(storageServiceMock.delete).not.toHaveBeenCalled();
+    });
+
     it('should still return the deleted photo when storage deletion fails', async () => {
       const storageError = new Error('Storage deletion failed');
 
@@ -443,6 +590,7 @@ describe('ServicePhotoService', () => {
         ...photo,
         serviceRecord: {
           assetId,
+          technicianId: userId,
         },
       });
 
@@ -460,6 +608,7 @@ describe('ServicePhotoService', () => {
         ...photo,
         serviceRecord: {
           assetId,
+          technicianId: userId,
         },
       });
 

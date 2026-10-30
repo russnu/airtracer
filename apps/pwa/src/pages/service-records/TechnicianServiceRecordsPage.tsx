@@ -89,7 +89,7 @@ export function TechnicianServiceRecordsPage() {
       {unsynced.length > 0 && (
         <section>
           <div className="flex items-baseline justify-between gap-3 mb-2">
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-brand-tertiary">
               Not uploaded yet ({unsynced.length})
             </h2>
             <Link to="/sync" className="text-sm text-accent-700 underline">
@@ -104,10 +104,10 @@ export function TechnicianServiceRecordsPage() {
                   className="flex flex-wrap items-center justify-between gap-2 border-dashed"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-900">
+                    <p className="font-medium text-primary-900">
                       {item.payload.serviceType}
                     </p>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-primary-500">
                       {item.assetLabel ?? "Unknown unit"} ·{" "}
                       {new Date(item.payload.serviceDate).toLocaleDateString()}
                     </p>
@@ -244,7 +244,7 @@ function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
     <Link to={`/service-records/${record.id}`} className="block group">
       <div className="border border-primary-200 rounded-lg p-4 bg-white hover:border-accent-500 transition-colors">
         <div className="flex flex-wrap justify-between items-start gap-2">
-          <p className="font-semibold text-slate-900 group-hover:text-accent-600 transition-colors break-words">
+          <p className="font-semibold text-primary-900 group-hover:text-accent-600 transition-colors break-words">
             {record.serviceType}
           </p>
           <Badge
@@ -254,22 +254,22 @@ function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
             {serviceStatusLabel(record.status)}
           </Badge>
         </div>
-        <p className="text-sm font-medium text-slate-700 mt-1 break-words">
+        <p className="text-sm font-medium text-primary-700 mt-1 break-words">
           {asset.brand} {asset.model}
           {asset.serialNumber && (
-            <span className="font-normal text-slate-500">
+            <span className="font-normal text-primary-500">
               {" "}
               · {asset.serialNumber}
             </span>
           )}
         </p>
         {record.description && (
-          <p className="text-sm text-slate-600 line-clamp-2 mt-2">
+          <p className="text-sm text-primary-600 line-clamp-2 mt-2">
             {record.description}
           </p>
         )}
         {(asset.location || record.photoCount > 0) && (
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-slate-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-primary-500">
             {asset.location && (
               <span className="inline-flex items-center gap-1">
                 <PiMapPinBold className="w-3.5 h-3.5" aria-hidden="true" />

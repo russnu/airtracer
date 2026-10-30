@@ -97,30 +97,21 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="sticky top-0 z-30 bg-white border-b border-slate-200">
+    <div className="min-h-screen bg-primary-50 flex flex-col">
+      <header className="sticky top-0 z-30 bg-white border-b border-primary-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="shrink-0 flex items-center">
                 <Link
                   to="/dashboard"
-                  className="text-xl font-black text-slate-900 flex items-center gap-2"
+                  className="text-xl font-black flex items-center gap-2"
                 >
-                  <svg
-                    className="w-6 h-6 text-blue-600"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 10V3L4 14h7v7l9-11h-7z"
-                    />
-                  </svg>
-                  AirTracer
+                  <img src="/logo.svg" alt="" className="h-9 w-auto" />
+                  <span>
+                    <span className="text-brand-primary">Air</span>
+                    <span className="text-brand-secondary">Tracer</span>
+                  </span>
                 </Link>
               </div>
               <nav className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -132,8 +123,8 @@ export function AppLayout() {
                       `inline-flex items-center px-1 pt-1 border-b-2 text-sm transition-colors duration-200 
                     ${
                       isActive
-                        ? "border-blue-600 text-slate-900 font-bold"
-                        : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700 font-medium"
+                        ? "border-brand-secondary text-brand-tertiary font-bold"
+                        : "border-transparent text-primary-500 hover:border-primary-300 hover:text-primary-700 font-medium"
                     }`
                     }
                   >
@@ -145,16 +136,16 @@ export function AppLayout() {
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
               <div className="relative flex items-center gap-4">
                 <SyncStatusIndicator />
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-primary-700">
                   {user?.firstName} {user?.lastName}
                 </span>
-                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+                <div className="h-8 w-8 rounded-full bg-brand-secondary-100 flex items-center justify-center text-brand-secondary-700 font-bold">
                   {user?.firstName?.[0] || ""}
                   {user?.lastName?.[0] || ""}
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="text-sm text-slate-500 hover:text-slate-700"
+                  className="text-sm text-primary-500 hover:text-primary-700"
                 >
                   Logout
                 </button>
@@ -164,7 +155,7 @@ export function AppLayout() {
               <SyncStatusIndicator />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-slate-400 hover:text-slate-500 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+                className="inline-flex items-center justify-center p-2 rounded-md text-primary-400 hover:text-primary-500 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-500"
               >
                 <span className="sr-only">Open main menu</span>
                 {mobileMenuOpen ? (
@@ -203,7 +194,7 @@ export function AppLayout() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-slate-200">
+          <div className="sm:hidden border-t border-primary-200">
             <div className="pt-2 pb-3 space-y-1">
               {navItems.map((item) => (
                 <NavLink
@@ -211,8 +202,8 @@ export function AppLayout() {
                   to={item.path}
                   className={({ isActive }) =>
                     isActive
-                      ? "bg-blue-50 border-blue-600 text-blue-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-                      : "border-transparent text-slate-500 hover:bg-slate-50 hover:border-slate-300 hover:text-slate-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+                      ? "bg-brand-secondary-50 border-brand-secondary text-brand-tertiary block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+                      : "border-transparent text-primary-500 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
                   }
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -220,19 +211,19 @@ export function AppLayout() {
                 </NavLink>
               ))}
             </div>
-            <div className="pt-4 pb-3 border-t border-slate-200">
+            <div className="pt-4 pb-3 border-t border-primary-200">
               <div className="flex items-center px-4">
                 <div className="shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
+                  <div className="h-10 w-10 rounded-full bg-brand-secondary-100 flex items-center justify-center text-brand-secondary-700 font-bold text-lg">
                     {user?.firstName?.[0] || ""}
                     {user?.lastName?.[0] || ""}
                   </div>
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium text-slate-800">
+                  <div className="text-base font-medium text-primary-800">
                     {user?.firstName} {user?.lastName}
                   </div>
-                  <div className="text-sm font-medium text-slate-500">
+                  <div className="text-sm font-medium text-primary-500">
                     {user?.email}
                   </div>
                 </div>
@@ -243,7 +234,7 @@ export function AppLayout() {
                     setMobileMenuOpen(false);
                     handleLogout();
                   }}
-                  className="block w-full text-left px-4 py-2 text-base font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                  className="block w-full text-left px-4 py-2 text-base font-medium text-primary-500 hover:text-primary-800 hover:bg-primary-100"
                 >
                   Sign out
                 </button>

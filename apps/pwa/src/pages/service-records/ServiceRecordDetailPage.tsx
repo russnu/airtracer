@@ -184,7 +184,7 @@ export function ServiceRecordDetailPage() {
       <div className="mb-6 flex items-start space-x-4">
         <button
           onClick={() => navigate(-1)}
-          className="text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
+          className="text-primary-500 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 p-2 rounded-full transition-colors"
           aria-label="Go back"
         >
           <PiArrowLeftBold className="w-5 h-5" />
@@ -197,23 +197,23 @@ export function ServiceRecordDetailPage() {
 
       <div className="space-y-6">
         <Card className="p-6">
-          <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
+          <div className="flex justify-between items-start mb-6 border-b border-primary-100 pb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 break-words">
+              <h2 className="text-xl font-bold text-brand-tertiary break-words">
                 {record.serviceType}
               </h2>
               {record.asset && (
-                <p className="text-sm font-medium text-slate-700 mt-1 break-words">
+                <p className="text-sm font-medium text-primary-700 mt-1 break-words">
                   {record.asset.brand} {record.asset.model}
                   {record.asset.serialNumber && (
-                    <span className="font-normal text-slate-500">
+                    <span className="font-normal text-primary-500">
                       {" "}
                       · {record.asset.serialNumber}
                     </span>
                   )}
                 </p>
               )}
-              <p className="text-slate-500 text-xs mt-1">
+              <p className="text-primary-500 text-xs mt-1">
                 Record ID: {record.id}
               </p>
             </div>
@@ -255,13 +255,13 @@ export function ServiceRecordDetailPage() {
                     </Button>
                   ))}
                   {!isOnline && (
-                    <span className="text-sm text-slate-500">
+                    <span className="text-sm text-primary-500">
                       Status changes need a connection.
                     </span>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-primary-500">
                   This record is {serviceStatusLabel(record.status).toLowerCase()}{" "}
                   and can no longer change status.
                 </p>
@@ -271,10 +271,10 @@ export function ServiceRecordDetailPage() {
 
           {record.description && (
             <div className="mb-6">
-              <h3 className="text-sm font-bold text-slate-500 uppercase mb-2">
+              <h3 className="text-sm font-bold text-primary-500 uppercase mb-2">
                 Description of Work
               </h3>
-              <p className="text-sm text-slate-900 whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <p className="text-sm text-primary-900 whitespace-pre-wrap bg-primary-50 p-4 rounded-lg border border-primary-100">
                 {record.description}
               </p>
             </div>
@@ -283,16 +283,16 @@ export function ServiceRecordDetailPage() {
           {/* Measurements */}
           {recordedMeasurements.length > 0 && (
             <div className="mb-6">
-              <h3 className="text-sm font-bold text-slate-500 uppercase mb-3">
+              <h3 className="text-sm font-bold text-primary-500 uppercase mb-3">
                 Diagnostic Measurements
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 bg-primary-50 p-4 rounded-lg border border-primary-100">
                 {recordedMeasurements.map(({ key, label, unit }) => (
                   <div key={key}>
-                    <span className="block text-xs text-slate-400">
+                    <span className="block text-xs text-primary-400">
                       {label}
                     </span>
-                    <span className="font-medium text-slate-900">
+                    <span className="font-medium text-primary-900">
                       {record[key]} {unit}
                     </span>
                   </div>
@@ -304,32 +304,32 @@ export function ServiceRecordDetailPage() {
           {/* Findings & Recommendations */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="mb-6">
-              <h3 className="text-sm font-bold text-slate-500 uppercase mb-2">
+              <h3 className="text-sm font-bold text-primary-500 uppercase mb-2">
                 Findings
               </h3>
-              <div className="text-sm bg-slate-50 p-4 rounded-lg border border-slate-100 h-full min-h-20">
+              <div className="text-sm bg-primary-50 p-4 rounded-lg border border-primary-100 h-full min-h-20">
                 {record.findings ? (
-                  <p className="text-slate-900 whitespace-pre-wrap">
+                  <p className="text-primary-900 whitespace-pre-wrap">
                     {record.findings}
                   </p>
                 ) : (
-                  <p className="text-slate-400 italic text-sm">
+                  <p className="text-primary-400 italic text-sm">
                     No findings recorded.
                   </p>
                 )}
               </div>
             </div>
             <div className="mb-6">
-              <h3 className="text-sm font-bold text-slate-500 uppercase mb-2">
+              <h3 className="text-sm font-bold text-primary-500 uppercase mb-2">
                 Recommendations
               </h3>
-              <div className="text-sm bg-slate-50 p-4 rounded-lg border border-slate-100 h-full min-h-20">
+              <div className="text-sm bg-primary-50 p-4 rounded-lg border border-primary-100 h-full min-h-20">
                 {record.recommendations ? (
-                  <p className="text-slate-900 whitespace-pre-wrap">
+                  <p className="text-primary-900 whitespace-pre-wrap">
                     {record.recommendations}
                   </p>
                 ) : (
-                  <p className="text-slate-400 italic text-sm">
+                  <p className="text-primary-400 italic text-sm">
                     No recommendations recorded.
                   </p>
                 )}
@@ -340,7 +340,7 @@ export function ServiceRecordDetailPage() {
 
         {/* Photos Evidence */}
         <Card className="p-6">
-          <h3 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">
+          <h3 className="text-lg font-semibold text-brand-tertiary border-b border-primary-100 pb-3 mb-4">
             Photo Evidence
           </h3>
 
@@ -352,8 +352,8 @@ export function ServiceRecordDetailPage() {
 
           {/* Upload input: the asset owner or the record's technician */}
           {canAddPhotos && (
-            <div className="mb-6 p-4 border border-dashed border-slate-300 rounded-lg bg-slate-50">
-              <h4 className="text-sm font-medium text-slate-700 mb-2">
+            <div className="mb-6 p-4 border border-dashed border-primary-300 rounded-lg bg-primary-50">
+              <h4 className="text-sm font-medium text-primary-700 mb-2">
                 Attach Photo
               </h4>
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -361,14 +361,14 @@ export function ServiceRecordDetailPage() {
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-accent-50 file:text-accent-700 hover:file:bg-accent-100"
+                  className="text-sm text-primary-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-accent-50 file:text-accent-700 hover:file:bg-accent-100"
                 />
                 <input
                   type="text"
                   placeholder="Caption (optional)"
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+                  className="flex-1 rounded-lg border border-primary-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
                 />
                 <Button
                   size="sm"
@@ -380,7 +380,7 @@ export function ServiceRecordDetailPage() {
                 </Button>
               </div>
               {!isOnline && (
-                <p className="text-sm text-slate-500 mt-2">
+                <p className="text-sm text-primary-500 mt-2">
                   Photo uploads need a connection.
                 </p>
               )}
@@ -392,8 +392,8 @@ export function ServiceRecordDetailPage() {
               <Spinner />
             </div>
           ) : photos.length === 0 ? (
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-8 text-center">
-              <p className="text-slate-500 italic">
+            <div className="bg-primary-50 border border-primary-100 rounded-lg p-8 text-center">
+              <p className="text-primary-500 italic">
                 No photos attached to this record.
               </p>
             </div>
@@ -402,7 +402,7 @@ export function ServiceRecordDetailPage() {
               {photos.map((photo) => (
                 <div
                   key={photo.id}
-                  className="relative group rounded-lg overflow-hidden border border-slate-200 aspect-square"
+                  className="relative group rounded-lg overflow-hidden border border-primary-200 aspect-square"
                 >
                   <img
                     src={photo.url}

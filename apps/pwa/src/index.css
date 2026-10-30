@@ -4,6 +4,14 @@
 
 @theme {
   /* Colors */
+  --color-brand-primary: #1d7daf;
+  --color-brand-secondary: #05b4b4;
+  --color-brand-tertiary: #0e2340;
+
+  --color-brand-secondary-50: #e6f8f8;
+  --color-brand-secondary-100: #c6efef;
+  --color-brand-secondary-700: #04807f;
+
   --color-primary-50: #f8fafc;
   --color-primary-100: #f1f5f9;
   --color-primary-200: #e2e8f0;
@@ -15,13 +23,15 @@
   --color-primary-800: #1e293b;
   --color-primary-900: #0f172a;
 
-  --color-accent-50: #eff6ff;
-  --color-accent-100: #dbeafe;
-  --color-accent-200: #bfdbfe;
-  --color-accent-400: #60a5fa;
-  --color-accent-500: #3b82f6;
-  --color-accent-600: #2563eb;
-  --color-accent-700: #1d4ed8;
+  /* Accent: shades of brand-primary (600 is the brand color) */
+  --color-accent-50: #eef7fb;
+  --color-accent-100: #d6ebf5;
+  --color-accent-200: #afd6ea;
+  --color-accent-400: #4fa3cf;
+  --color-accent-500: #2a8fc2;
+  --color-accent-600: #1d7daf;
+  --color-accent-700: #17658e;
+  --color-accent-800: #134f70;
 
   --color-success-50: #ecfdf5;
   --color-success-100: #d1fae5;

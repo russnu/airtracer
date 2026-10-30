@@ -72,7 +72,7 @@ export function EquipmentListPage() {
               <Card className="h-full hover:border-accent-400 transition-colors cursor-pointer flex flex-col">
                 <div className="p-4 flex-1">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-lg text-primary-900 group-hover:text-accent-600 transition-colors">
+                    <h3 className="font-semibold text-lg text-brand-tertiary group-hover:text-accent-600 transition-colors">
                       {asset.brand} {asset.model}
                     </h3>
                     <Badge variant={asset.isActive ? "success" : "neutral"}>

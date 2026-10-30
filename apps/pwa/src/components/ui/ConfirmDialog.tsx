@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { Button } from './Button';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -60,17 +61,17 @@ export function ConfirmDialog({
         event.preventDefault();
         handleCancel();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-primary-200 bg-white p-0 shadow-lg backdrop:bg-slate-900/50"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-primary-200 bg-white p-0 shadow-lg backdrop:bg-primary-900/50"
     >
       <div className="p-6 space-y-4">
-        <h2 id={titleId} className="text-lg font-semibold text-slate-900">
+        <h2 id={titleId} className="text-lg font-semibold text-brand-tertiary">
           {title}
         </h2>
-        <div className="text-sm text-slate-600 space-y-2">{children}</div>
+        <div className="text-sm text-primary-600 space-y-2">{children}</div>
 
         {confirmPhrase && (
           <div>
-            <label htmlFor={phraseId} className="block text-sm text-slate-700 mb-1">
+            <label htmlFor={phraseId} className="block text-sm text-primary-700 mb-1">
               Type <span className="font-mono font-semibold">{confirmPhrase}</span> to
               confirm
             </label>
@@ -79,35 +80,28 @@ export function ConfirmDialog({
               value={typed}
               onChange={(event) => setTyped(event.target.value)}
               autoComplete="off"
-              className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+              className="block w-full rounded-md border border-primary-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
             />
           </div>
         )}
 
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           {actions}
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 bg-white text-primary-700 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
-          >
+          <Button type="button" variant="secondary" onClick={handleCancel}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={tone}
             onClick={() => {
               setTyped('');
               onConfirm();
             }}
-            disabled={!canConfirm || isConfirming}
-            className={`px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 ${
-              tone === 'danger'
-                ? 'bg-error-600 hover:bg-error-700 focus-visible:ring-error-500'
-                : 'bg-accent-600 hover:bg-accent-700 focus-visible:ring-accent-500'
-            }`}
+            disabled={!canConfirm}
+            isLoading={isConfirming}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </dialog>

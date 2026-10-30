@@ -3,6 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { assetsApi } from "../../lib/api-client";
 import { Link } from "react-router-dom";
 import { SavedPassportsList } from "../../components/offline/SavedPassportsList";
+import { Badge } from "../../components/ui/Badge";
+import { buttonClasses } from "../../components/ui/buttonClasses";
+import { Spinner } from "../../components/ui/Spinner";
 
 export function OwnerDashboard() {
   const { user } = useAuth();
@@ -19,10 +22,10 @@ export function OwnerDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-2xl font-bold text-brand-tertiary">
           Welcome back, {user?.firstName}!
         </h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-primary-500">
           Here's an overview of your equipment.
         </p>
       </div>
@@ -30,30 +33,30 @@ export function OwnerDashboard() {
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-slate-500 truncate">
+            <dt className="text-sm font-medium text-primary-500 truncate">
               Total Equipment
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-slate-900">
+            <dd className="mt-1 text-3xl font-semibold text-primary-900">
               {assets ? assets.length : "-"}
             </dd>
           </div>
         </div>
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-slate-500 truncate">
+            <dt className="text-sm font-medium text-primary-500 truncate">
               Active Equipment
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-slate-900">
+            <dd className="mt-1 text-3xl font-semibold text-primary-900">
               {assets ? assets.filter((a) => a.isActive).length : "-"}
             </dd>
           </div>
         </div>
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-slate-500 truncate">
+            <dt className="text-sm font-medium text-primary-500 truncate">
               Recent Services
             </dt>
-            <dd className="mt-1 text-3xl font-semibold text-slate-900">-</dd>
+            <dd className="mt-1 text-3xl font-semibold text-primary-900">-</dd>
           </div>
         </div>
       </div>
@@ -61,10 +64,10 @@ export function OwnerDashboard() {
       <div className="flex gap-4">
         <Link
           to="/equipment/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className={buttonClasses("primary")}
         >
           <svg
-            className="-ml-1 mr-2 h-5 w-5"
+            className="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -80,10 +83,10 @@ export function OwnerDashboard() {
         </Link>
         <Link
           to="/scan"
-          className="inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className={buttonClasses("secondary")}
         >
           <svg
-            className="-ml-1 mr-2 h-5 w-5 text-slate-500"
+            className="h-5 w-5 text-primary-500"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -100,56 +103,55 @@ export function OwnerDashboard() {
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <div className="px-4 py-5 border-b border-slate-200 sm:px-6">
-          <h3 className="text-lg leading-6 font-medium text-slate-900">
+        <div className="px-4 py-5 border-b border-primary-200 sm:px-6">
+          <h3 className="text-lg leading-6 font-medium text-brand-tertiary">
             Recent Equipment
           </h3>
         </div>
 
         {isLoading && (
           <div className="p-8 flex justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <Spinner size="lg" />
           </div>
         )}
 
         {error && (
-          <div className="p-8 text-center text-red-600">
+          <div className="p-8 text-center text-error-600">
             Failed to load equipment. Please try again.
           </div>
         )}
 
         {!isLoading && !error && assets?.length === 0 && (
-          <div className="p-8 text-center text-slate-500">
+          <div className="p-8 text-center text-primary-500">
             No equipment registered yet.
           </div>
         )}
 
         {!isLoading && !error && assets && assets.length > 0 && (
-          <ul className="divide-y divide-slate-200">
+          <ul className="divide-y divide-primary-200">
             {assets.slice(0, 5).map((asset) => (
               <li key={asset.id}>
                 <Link
                   to={`/equipment/${asset.id}`}
-                  className="block hover:bg-slate-50"
+                  className="block hover:bg-primary-50"
                 >
                   <div className="px-4 py-4 sm:px-6">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-blue-600 truncate">
+                      <p className="text-sm font-medium text-accent-600 truncate">
                         {asset.brand} {asset.model}
                       </p>
-                      <div className="ml-2 shrink-0 flex">
-                        <p
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${asset.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"}`}
-                        >
-                          {asset.isActive ? "Active" : "Inactive"}
-                        </p>
-                      </div>
+                      <Badge
+                        variant={asset.isActive ? "success" : "neutral"}
+                        className="ml-2 shrink-0"
+                      >
+                        {asset.isActive ? "Active" : "Inactive"}
+                      </Badge>
                     </div>
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
-                        <p className="flex items-center text-sm text-slate-500">
+                        <p className="flex items-center text-sm text-primary-500">
                           <svg
-                            className="shrink-0 mr-1.5 h-5 w-5 text-slate-400"
+                            className="shrink-0 mr-1.5 h-5 w-5 text-primary-400"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"

@@ -9,9 +9,9 @@ interface DataIconProps {
 export function DataIcon({ icon: Icon, className }: DataIconProps) {
   return (
     <div
-      className={`flex items-center justify-center w-10 h-10 rounded-lg bg-gray-200 ${className ?? ""}`}
+      className={`flex items-center justify-center w-10 h-10 rounded-lg bg-primary-200 ${className ?? ""}`}
     >
-      <Icon className="w-5 h-5 text-slate-600" />
+      <Icon className="w-5 h-5 text-primary-600" />
     </div>
   );
 }

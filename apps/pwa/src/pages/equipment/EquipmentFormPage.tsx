@@ -208,7 +208,7 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4 pt-4 border-t border-slate-100">
+          <div className="flex justify-end space-x-4 pt-4 border-t border-primary-100">
             <Link to={isEditMode ? `/equipment/${initialAsset?.id}` : '/equipment'}>
               <Button type="button" variant="outline">Cancel</Button>
             </Link>
@@ -237,7 +237,7 @@ export function EquipmentFormPage() {
       <div className="mb-4">
         <Link
           to={isEditMode ? `/equipment/${id}` : '/equipment'}
-          className="text-slate-500 hover:text-slate-800 text-sm font-medium transition-colors"
+          className="text-primary-500 hover:text-primary-800 text-sm font-medium transition-colors"
         >
           &larr; Back
         </Link>

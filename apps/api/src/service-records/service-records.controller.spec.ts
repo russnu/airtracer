@@ -14,6 +14,7 @@ describe('ServiceRecordsController', () => {
     create: jest.fn(),
     findOne: jest.fn(),
     findByAsset: jest.fn(),
+    findByTechnician: jest.fn(),
     updateStatus: jest.fn(),
   };
 
@@ -109,6 +110,26 @@ describe('ServiceRecordsController', () => {
       );
 
       expect(result).toEqual(createdServiceRecord);
+    });
+  });
+
+  //==========================================================================//
+  // findMine
+  //==========================================================================//
+
+  describe('findMine', () => {
+    it("should return the authenticated technician's records", async () => {
+      const serviceRecords = [{ id: serviceRecordId, technicianId }];
+      serviceRecordServiceMock.findByTechnician.mockResolvedValue(
+        serviceRecords,
+      );
+
+      const result = await controller.findMine(user);
+
+      expect(serviceRecordServiceMock.findByTechnician).toHaveBeenCalledWith(
+        user.id,
+      );
+      expect(result).toEqual(serviceRecords);
     });
   });
 

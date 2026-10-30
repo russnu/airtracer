@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   /** When set, the user must type this word to enable the confirm button. */
   confirmPhrase?: string;
+  /** Destructive actions use "danger" (the default). */
+  tone?: 'danger' | 'primary';
   isConfirming?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -23,6 +25,7 @@ export function ConfirmDialog({
   actions,
   confirmLabel,
   confirmPhrase,
+  tone = 'danger',
   isConfirming = false,
   onConfirm,
   onCancel,
@@ -97,7 +100,11 @@ export function ConfirmDialog({
               onConfirm();
             }}
             disabled={!canConfirm || isConfirming}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-error-600 text-white hover:bg-error-700 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-error-500"
+            className={`px-4 py-2 text-sm font-medium rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 ${
+              tone === 'danger'
+                ? 'bg-error-600 hover:bg-error-700 focus-visible:ring-error-500'
+                : 'bg-accent-600 hover:bg-accent-700 focus-visible:ring-accent-500'
+            }`}
           >
             {confirmLabel}
           </button>

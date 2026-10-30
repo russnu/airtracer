@@ -44,8 +44,23 @@ export class ServicePhotoService {
     return serviceRecord;
   }
   //-------------------------------------------------------------//
+  // The asset owner and the record's technician may add photos.
+  private assertCanAddPhotos(
+    serviceRecord: { technicianId: string; asset: { ownerId: string } },
+    userId: string,
+  ) {
+    if (
+      serviceRecord.technicianId !== userId &&
+      serviceRecord.asset.ownerId !== userId
+    ) {
+      throw new ForbiddenException(
+        'Only the equipment owner or the technician who created this service record can add photos.',
+      );
+    }
+  }
+  //-------------------------------------------------------------//
   // Photos are evidence: only the technician who created the service record
-  // may add, edit, or remove them.
+  // may edit or remove them.
   private assertRecordTechnician(
     serviceRecord: { technicianId: string },
     userId: string,
@@ -83,7 +98,7 @@ export class ServicePhotoService {
     dto: CreateServicePhotoDto,
   ) {
     const serviceRecord = await this.getServiceRecord(serviceRecordId);
-    this.assertRecordTechnician(serviceRecord, userId);
+    this.assertCanAddPhotos(serviceRecord, userId);
     const file = this.validateImage(uploadedFile);
 
     // Store the file
@@ -143,17 +158,9 @@ export class ServicePhotoService {
     }
   }
   //-------------------------------------------------------------//
-  async findByServiceRecord(serviceRecordId: string, userId: string) {
-    const serviceRecord = await this.getServiceRecord(serviceRecordId);
-
-    if (
-      serviceRecord.asset.ownerId !== userId &&
-      serviceRecord.technicianId !== userId
-    ) {
-      throw new ForbiddenException(
-        'You do not have access to the photos of this service record.',
-      );
-    }
+  // Any owner or technician may view photos; the role check is in the controller.
+  async findByServiceRecord(serviceRecordId: string) {
+    await this.getServiceRecord(serviceRecordId);
 
     const photos = await this.prisma.servicePhoto.findMany({
       where: { serviceRecordId },

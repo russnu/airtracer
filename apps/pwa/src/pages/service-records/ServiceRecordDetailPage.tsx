@@ -13,14 +13,59 @@ import { Spinner } from "../../components/ui/Spinner";
 import { Alert } from "../../components/ui/Alert";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
-import type { ServiceStatus } from "../../types/api";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import type { ServiceRecord, ServiceStatus } from "../../types/api";
 import { PiArrowLeftBold } from "react-icons/pi";
+import { useAuth } from "../../contexts/AuthContext";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
+import {
+  NEXT_SERVICE_STATUSES,
+  serviceStatusBadgeVariant,
+  serviceStatusLabel,
+} from "../../components/service-records/serviceStatus";
+
+const STATUS_ACTIONS: Record<
+  ServiceStatus,
+  { label: string; variant: "primary" | "success" | "outline" }
+> = {
+  PENDING: { label: "Reopen", variant: "outline" },
+  IN_PROGRESS: { label: "Start work", variant: "primary" },
+  COMPLETED: { label: "Mark completed", variant: "success" },
+  CANCELLED: { label: "Cancel record", variant: "outline" },
+};
+
+const MEASUREMENTS: {
+  key: keyof Pick<
+    ServiceRecord,
+    | "suctionPressure"
+    | "dischargePressure"
+    | "current"
+    | "voltage"
+    | "returnAirTemp"
+    | "supplyAirTemp"
+  >;
+  label: string;
+  unit: string;
+}[] = [
+  { key: "suctionPressure", label: "Suction Pressure", unit: "PSI" },
+  { key: "dischargePressure", label: "Discharge Pressure", unit: "PSI" },
+  { key: "current", label: "Current", unit: "A" },
+  { key: "voltage", label: "Voltage", unit: "V" },
+  { key: "returnAirTemp", label: "Return Air Temp", unit: "°C" },
+  { key: "supplyAirTemp", label: "Supply Air Temp", unit: "°C" },
+];
 
 export function ServiceRecordDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isOnline = useOnlineStatus();
 
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [confirmStatus, setConfirmStatus] = useState<ServiceStatus | null>(
+    null,
+  );
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -57,6 +102,39 @@ export function ServiceRecordDetailPage() {
     },
   });
 
+  const statusMutation = useMutation({
+    mutationFn: (status: ServiceStatus) =>
+      serviceRecordsApi.updateStatus(id!, { status }),
+    onSuccess: (updated) => {
+      setStatusError(null);
+      setConfirmStatus(null);
+      // The PATCH response has no asset, so keep the one already loaded.
+      queryClient.setQueryData<ServiceRecord>(
+        ["service-records", id],
+        (current) => (current ? { ...current, status: updated.status } : current),
+      );
+      queryClient.invalidateQueries({ queryKey: ["service-records", "mine"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+    },
+    onError: (err) => {
+      setConfirmStatus(null);
+      setStatusError(
+        err instanceof ApiClientError
+          ? err.message
+          : "Failed to update the status.",
+      );
+    },
+  });
+
+  const handleStatusChange = (status: ServiceStatus) => {
+    // COMPLETED and CANCELLED are final, so confirm them first.
+    if (NEXT_SERVICE_STATUSES[status].length === 0) {
+      setConfirmStatus(status);
+    } else {
+      statusMutation.mutate(status);
+    }
+  };
+
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
@@ -90,18 +168,16 @@ export function ServiceRecordDetailPage() {
     );
   }
 
-  const getBadgeVariant = (status: ServiceStatus) => {
-    switch (status) {
-      case "COMPLETED":
-        return "success";
-      case "IN_PROGRESS":
-        return "warning";
-      case "CANCELLED":
-        return "error";
-      default:
-        return "info";
-    }
-  };
+  // The API enforces these; they only decide which controls to show.
+  const isRecordTechnician = !!user && user.id === record.technicianId;
+  const canAddPhotos =
+    isRecordTechnician || (!!user && user.id === record.asset?.ownerId);
+  const nextStatuses = isRecordTechnician
+    ? NEXT_SERVICE_STATUSES[record.status]
+    : [];
+  const recordedMeasurements = MEASUREMENTS.filter(
+    ({ key }) => record[key] !== null,
+  );
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-20">
@@ -123,17 +199,75 @@ export function ServiceRecordDetailPage() {
         <Card className="p-6">
           <div className="flex justify-between items-start mb-6 border-b border-slate-100 pb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">
+              <h2 className="text-xl font-bold text-slate-900 break-words">
                 {record.serviceType}
               </h2>
+              {record.asset && (
+                <p className="text-sm font-medium text-slate-700 mt-1 break-words">
+                  {record.asset.brand} {record.asset.model}
+                  {record.asset.serialNumber && (
+                    <span className="font-normal text-slate-500">
+                      {" "}
+                      · {record.asset.serialNumber}
+                    </span>
+                  )}
+                </p>
+              )}
               <p className="text-slate-500 text-xs mt-1">
                 Record ID: {record.id}
               </p>
             </div>
-            <Badge variant={getBadgeVariant(record.status)}>
-              {record.status}
+            <Badge
+              variant={serviceStatusBadgeVariant(record.status)}
+              className="shrink-0"
+            >
+              {serviceStatusLabel(record.status)}
             </Badge>
           </div>
+
+          {/* Status actions: only for the technician who created the record */}
+          {isRecordTechnician && (
+            <div className="mb-6">
+              {statusError && (
+                <Alert
+                  variant="error"
+                  className="mb-3"
+                  onDismiss={() => setStatusError(null)}
+                >
+                  {statusError}
+                </Alert>
+              )}
+              {nextStatuses.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {nextStatuses.map((status) => (
+                    <Button
+                      key={status}
+                      size="sm"
+                      variant={STATUS_ACTIONS[status].variant}
+                      disabled={!isOnline || statusMutation.isPending}
+                      isLoading={
+                        statusMutation.isPending &&
+                        statusMutation.variables === status
+                      }
+                      onClick={() => handleStatusChange(status)}
+                    >
+                      {STATUS_ACTIONS[status].label}
+                    </Button>
+                  ))}
+                  {!isOnline && (
+                    <span className="text-sm text-slate-500">
+                      Status changes need a connection.
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  This record is {serviceStatusLabel(record.status).toLowerCase()}{" "}
+                  and can no longer change status.
+                </p>
+              )}
+            </div>
+          )}
 
           {record.description && (
             <div className="mb-6">
@@ -147,61 +281,22 @@ export function ServiceRecordDetailPage() {
           )}
 
           {/* Measurements */}
-          {(record.suctionPressure !== null ||
-            record.dischargePressure !== null ||
-            record.current !== null ||
-            record.voltage !== null ||
-            record.returnAirTemp !== null ||
-            record.supplyAirTemp !== null) && (
+          {recordedMeasurements.length > 0 && (
             <div className="mb-6">
               <h3 className="text-sm font-bold text-slate-500 uppercase mb-3">
                 Diagnostic Measurements
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
-                <div>
-                  <span className="block text-xs text-slate-400">
-                    Suction Pressure
-                  </span>
-                  <span className="font-medium text-slate-900">
-                    {record.suctionPressure ?? "-"} PSI
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400">
-                    Discharge Pressure
-                  </span>
-                  <span className="font-medium text-slate-900">
-                    {record.dischargePressure ?? "-"} PSI
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400">Current</span>
-                  <span className="font-medium text-slate-900">
-                    {record.current ?? "-"} A
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400">Voltage</span>
-                  <span className="font-medium text-slate-900">
-                    {record.voltage ?? "-"} V
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400">
-                    Return Air Temp
-                  </span>
-                  <span className="font-medium text-slate-900">
-                    {record.returnAirTemp ?? "-"} °C
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-xs text-slate-400">
-                    Supply Air Temp
-                  </span>
-                  <span className="font-medium text-slate-900">
-                    {record.supplyAirTemp ?? "-"} °C
-                  </span>
-                </div>
+                {recordedMeasurements.map(({ key, label, unit }) => (
+                  <div key={key}>
+                    <span className="block text-xs text-slate-400">
+                      {label}
+                    </span>
+                    <span className="font-medium text-slate-900">
+                      {record[key]} {unit}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -255,35 +350,42 @@ export function ServiceRecordDetailPage() {
             </Alert>
           )}
 
-          {/* Upload input */}
-          <div className="mb-6 p-4 border border-dashed border-slate-300 rounded-lg bg-slate-50">
-            <h4 className="text-sm font-medium text-slate-700 mb-2">
-              Attach Photo
-            </h4>
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-accent-50 file:text-accent-700 hover:file:bg-accent-100"
-              />
-              <input
-                type="text"
-                placeholder="Caption (optional)"
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
-              />
-              <Button
-                size="sm"
-                disabled={!selectedFile || uploadMutation.isPending}
-                isLoading={uploadMutation.isPending}
-                onClick={handleUpload}
-              >
-                Upload Photo
-              </Button>
+          {/* Upload input: the asset owner or the record's technician */}
+          {canAddPhotos && (
+            <div className="mb-6 p-4 border border-dashed border-slate-300 rounded-lg bg-slate-50">
+              <h4 className="text-sm font-medium text-slate-700 mb-2">
+                Attach Photo
+              </h4>
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-accent-50 file:text-accent-700 hover:file:bg-accent-100"
+                />
+                <input
+                  type="text"
+                  placeholder="Caption (optional)"
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+                />
+                <Button
+                  size="sm"
+                  disabled={!selectedFile || !isOnline || uploadMutation.isPending}
+                  isLoading={uploadMutation.isPending}
+                  onClick={handleUpload}
+                >
+                  Upload Photo
+                </Button>
+              </div>
+              {!isOnline && (
+                <p className="text-sm text-slate-500 mt-2">
+                  Photo uploads need a connection.
+                </p>
+              )}
             </div>
-          </div>
+          )}
 
           {isLoadingPhotos ? (
             <div className="flex justify-center py-8">
@@ -318,6 +420,27 @@ export function ServiceRecordDetailPage() {
           )}
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={confirmStatus !== null}
+        title={
+          confirmStatus === "COMPLETED"
+            ? "Mark this record completed?"
+            : "Cancel this record?"
+        }
+        tone={confirmStatus === "COMPLETED" ? "primary" : "danger"}
+        confirmLabel={
+          confirmStatus ? STATUS_ACTIONS[confirmStatus].label : "Confirm"
+        }
+        isConfirming={statusMutation.isPending}
+        onConfirm={() => confirmStatus && statusMutation.mutate(confirmStatus)}
+        onCancel={() => setConfirmStatus(null)}
+      >
+        <p>
+          {confirmStatus === "COMPLETED" ? "Completed" : "Cancelled"} is a final
+          status. The record cannot change status again afterwards.
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }

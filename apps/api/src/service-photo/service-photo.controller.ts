@@ -24,8 +24,8 @@ import { MAX_PHOTO_SIZE_BYTES } from './utils/image-file.util';
 export class ServicePhotoController {
   constructor(private readonly servicePhotoService: ServicePhotoService) {}
   //-------------------------------------------------------------//
-  // Only the technician who created the service record may add photos.
-  @Roles(RoleName.TECHNICIAN)
+  // The asset owner or the record's technician may add photos.
+  @Roles(RoleName.OWNER, RoleName.TECHNICIAN)
   @Post(':serviceRecordId')
   @UseInterceptors(
     FileInterceptor('file', {
@@ -42,16 +42,11 @@ export class ServicePhotoController {
     return this.servicePhotoService.upload(serviceRecordId, user.id, file, dto);
   }
   //-------------------------------------------------------------//
-  // The asset owner or the record's technician may view photos.
+  // Any owner or technician may view photos.
+  @Roles(RoleName.OWNER, RoleName.TECHNICIAN)
   @Get(':serviceRecordId')
-  findByServiceRecord(
-    @Param('serviceRecordId') serviceRecordId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.servicePhotoService.findByServiceRecord(
-      serviceRecordId,
-      user.id,
-    );
+  findByServiceRecord(@Param('serviceRecordId') serviceRecordId: string) {
+    return this.servicePhotoService.findByServiceRecord(serviceRecordId);
   }
   //-------------------------------------------------------------//
   @Roles(RoleName.TECHNICIAN)

@@ -2,6 +2,13 @@ import type { ServiceStatus } from "../../types/api";
 
 type BadgeVariant = "success" | "warning" | "error" | "info";
 
+export const SERVICE_STATUSES: ServiceStatus[] = [
+  "PENDING",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "CANCELLED",
+];
+
 export const serviceStatusStyles: Record<
   ServiceStatus,
   { label: string; node: string; badge: BadgeVariant }
@@ -32,3 +39,16 @@ export const serviceStatusStyles: Record<
 export function serviceStatusBadgeVariant(status: ServiceStatus): BadgeVariant {
   return serviceStatusStyles[status]?.badge ?? "info";
 }
+
+export function serviceStatusLabel(status: ServiceStatus): string {
+  return serviceStatusStyles[status]?.label ?? status;
+}
+
+// Mirrors ALLOWED_STATUS_TRANSITIONS in the API, which enforces it; used here
+// only to decide which actions to offer.
+export const NEXT_SERVICE_STATUSES: Record<ServiceStatus, ServiceStatus[]> = {
+  PENDING: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};

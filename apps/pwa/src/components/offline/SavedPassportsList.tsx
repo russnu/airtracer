@@ -87,7 +87,7 @@ export function SavedPassportsList() {
       <div className="flex items-center justify-between">
         <h2
           id="saved-passports-heading"
-          className="text-lg font-semibold text-slate-900"
+          className="text-lg font-semibold text-brand-tertiary"
         >
           Saved for offline
         </h2>
@@ -123,7 +123,7 @@ export function SavedPassportsList() {
       )}
 
       {!error && saved.length === 0 ? (
-        <Card padding="sm" className="text-sm text-slate-500">
+        <Card padding="sm" className="text-sm text-primary-500">
           No passports saved yet. Open a passport and choose “Save for offline”.
         </Card>
       ) : (
@@ -132,13 +132,13 @@ export function SavedPassportsList() {
             <li key={item.assetId}>
               <Link
                 to={`/qr/${item.token}`}
-                className="block rounded-xl border border-primary-200 bg-white p-4 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
+                className="block rounded-xl border border-primary-200 bg-white p-4 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500"
               >
-                <p className="font-medium text-slate-900">{assetLabel(item)}</p>
+                <p className="font-medium text-primary-900">{assetLabel(item)}</p>
                 {item.asset.location && (
-                  <p className="text-sm text-slate-500">{item.asset.location}</p>
+                  <p className="text-sm text-primary-500">{item.asset.location}</p>
                 )}
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-primary-400 mt-1">
                   Last updated {new Date(item.refreshedAt).toLocaleString()}
                 </p>
               </Link>

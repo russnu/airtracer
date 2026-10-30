@@ -276,7 +276,7 @@ export function ScannerPage() {
 
   return (
     <div className="max-w-md mx-auto p-4 sm:p-6 space-y-6 pb-20">
-      <h1 className="text-2xl font-bold text-slate-900 text-center">
+      <h1 className="text-2xl font-bold text-brand-tertiary text-center">
         Scan Equipment QR
       </h1>
 
@@ -308,11 +308,11 @@ export function ScannerPage() {
             />
             {/* Viewfinder overlay */}
             <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-              <div className="w-52 h-52 border-2 border-emerald-500 rounded-lg relative">
-                <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-emerald-500" />
-                <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-emerald-500" />
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-emerald-500" />
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-emerald-500" />
+              <div className="w-52 h-52 border-2 border-success-500 rounded-lg relative">
+                <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-success-500" />
+                <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-success-500" />
+                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-success-500" />
+                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-success-500" />
               </div>
               <p className="mt-8 text-white text-sm font-medium bg-black/60 px-3 py-1.5 rounded-full">
                 Align QR code within frame
@@ -340,9 +340,9 @@ export function ScannerPage() {
             </button>
           </div>
         ) : (
-          <div className="aspect-square bg-slate-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-slate-300 p-6 text-center">
+          <div className="aspect-square bg-primary-100 rounded-lg flex flex-col items-center justify-center border-2 border-dashed border-primary-300 p-6 text-center">
             <svg
-              className="w-16 h-16 text-slate-400 mb-4"
+              className="w-16 h-16 text-primary-400 mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -360,7 +360,7 @@ export function ScannerPage() {
                 d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
               />
             </svg>
-            <p className="text-slate-600 mb-5 text-sm">
+            <p className="text-primary-600 mb-5 text-sm">
               Use your device camera or upload an image to scan an equipment QR
               code.
             </p>
@@ -397,10 +397,10 @@ export function ScannerPage() {
 
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200"></div>
+          <div className="w-full border-t border-primary-200"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-slate-50 text-slate-500">
+          <span className="px-2 bg-primary-50 text-primary-500">
             Or enter manually
           </span>
         </div>

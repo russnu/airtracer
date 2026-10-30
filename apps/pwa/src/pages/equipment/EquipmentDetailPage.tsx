@@ -78,7 +78,7 @@ export function EquipmentDetailPage() {
         </Alert>
         <Link
           to="/equipment"
-          className="mt-4 inline-block text-blue-600 hover:underline"
+          className="mt-4 inline-block text-accent-600 hover:underline"
         >
           &larr; Back to Equipments
         </Link>
@@ -105,9 +105,9 @@ export function EquipmentDetailPage() {
       <div className="mb-4">
         <Link
           to="/equipment"
-          className="text-slate-500 hover:text-slate-800 text-sm font-medium transition-colors flex items-center gap-2"
+          className="text-primary-500 hover:text-primary-800 text-sm font-medium transition-colors flex items-center gap-2"
         >
-          <span className="text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors">
+          <span className="text-primary-500 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 p-2 rounded-full transition-colors">
             <PiArrowLeftBold className="w-5 h-5 " />
           </span>
           Back to Equipments
@@ -144,16 +144,16 @@ export function EquipmentDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-bold mb-4 text-blue-600">
+            <h2 className="text-xl font-bold mb-4 text-brand-tertiary">
               Equipment Details
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiCheckCircleBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Status
                   </p>
                   <Badge variant={asset.isActive ? "success" : "neutral"}>
@@ -161,82 +161,82 @@ export function EquipmentDetailPage() {
                   </Badge>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiSquaresFourBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Equipment Type
                   </p>
-                  <p className="font-semibold text-slate-900 ">
+                  <p className="font-semibold text-primary-900 ">
                     {asset.equipmentType?.name || "N/A"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiBarcodeBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Serial Number
                   </p>
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-primary-900">
                     {asset.serialNumber || "N/A"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiBuildingApartmentBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Location
                   </p>
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-primary-900">
                     {asset.location || "N/A"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiGaugeBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Capacity
                   </p>
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-primary-900">
                     {asset.capacity
                       ? `${asset.capacity} ${asset.capacityUnit || ""}`
                       : "N/A"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiSnowflakeBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Refrigerant
                   </p>
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-primary-900">
                     {asset.refrigerant || "N/A"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 border-b border-slate-200 pb-2 w-full">
+              <div className="flex items-center gap-2 border-b border-primary-200 pb-2 w-full">
                 <span>
                   <DataIcon icon={PiCalendarPlusBold} />
                 </span>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <p className="text-xs font-medium text-primary-500 uppercase tracking-wider">
                     Installation Date
                   </p>
-                  <p className="font-semibold text-slate-900 tracking-tighter">
+                  <p className="font-semibold text-primary-900 tracking-tighter">
                     {asset.installationDate
                       ? new Date(asset.installationDate).toLocaleDateString()
                       : "N/A"}
@@ -247,7 +247,7 @@ export function EquipmentDetailPage() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-xl font-bold mb-4 text-blue-600">
+            <h2 className="text-xl font-bold mb-4 text-brand-tertiary">
               Service History
             </h2>
             <ServiceTimeline
@@ -264,9 +264,9 @@ export function EquipmentDetailPage() {
                   to={`/service-records/${record.id}`}
                   className="block group"
                 >
-                  <div className="border border-slate-200 rounded-lg p-4 hover:border-blue-500 transition-colors">
+                  <div className="border border-primary-200 rounded-lg p-4 hover:border-accent-500 transition-colors">
                     <div className="flex flex-wrap justify-between items-start gap-2">
-                      <p className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors wrap-break-word">
+                      <p className="font-semibold text-primary-900 group-hover:text-accent-600 transition-colors wrap-break-word">
                         {record.serviceType}
                       </p>
                       <Badge
@@ -277,7 +277,7 @@ export function EquipmentDetailPage() {
                       </Badge>
                     </div>
                     {record.description && (
-                      <p className="text-sm text-slate-600 line-clamp-2 mt-2">
+                      <p className="text-sm text-primary-600 line-clamp-2 mt-2">
                         {record.description}
                       </p>
                     )}
@@ -290,20 +290,20 @@ export function EquipmentDetailPage() {
 
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-bold mb-4 text-blue-600">QR Tag</h2>
+            <h2 className="text-xl font-bold mb-4 text-brand-tertiary">QR Tag</h2>
             <div className="flex flex-col items-center text-center">
               {asset.qrCode ? (
                 <>
-                  <div className="bg-white p-4 border border-slate-200 rounded-xl mb-4">
+                  <div className="bg-white p-4 border border-primary-200 rounded-xl mb-4">
                     <QRCodeSVG value={qrUrl} size={150} />
                   </div>
-                  <p className="text-sm text-slate-600 mb-2">
+                  <p className="text-sm text-primary-600 mb-2">
                     Token:{" "}
                     <span className="font-mono text-xs font-semibold">
                       {asset.qrCode.token}
                     </span>
                   </p>
-                  <p className="text-sm text-slate-600 mb-4">
+                  <p className="text-sm text-primary-600 mb-4">
                     Scan this QR code to quickly access equipment details and
                     service history.
                   </p>
@@ -335,10 +335,10 @@ export function EquipmentDetailPage() {
                 </>
               ) : (
                 <>
-                  <div className="w-32 h-32 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl flex items-center justify-center mb-4">
-                    <span className="text-slate-400">No QR Code</span>
+                  <div className="w-32 h-32 bg-primary-100 border-2 border-dashed border-primary-300 rounded-xl flex items-center justify-center mb-4">
+                    <span className="text-primary-400">No QR Code</span>
                   </div>
-                  <p className="text-sm text-slate-600 mb-4">
+                  <p className="text-sm text-primary-600 mb-4">
                     Generate a QR code to easily track and access this
                     equipment's information.
                   </p>

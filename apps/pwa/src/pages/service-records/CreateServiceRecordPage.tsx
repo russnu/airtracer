@@ -325,7 +325,7 @@ function ServiceRecordForm({
       <div className="mb-6 flex items-center space-x-4">
         <button 
           onClick={() => navigate(-1)}
-          className="text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
+          className="text-primary-500 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 p-2 rounded-full transition-colors"
           aria-label="Go back"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -346,7 +346,7 @@ function ServiceRecordForm({
       <form onSubmit={handleSubmit} className="space-y-6 mt-6">
         {/* Section 1: Service Info */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">Service Information</h2>
+          <h2 className="text-lg font-semibold text-brand-tertiary border-b border-primary-100 pb-3 mb-4">Service Information</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
@@ -388,8 +388,8 @@ function ServiceRecordForm({
         {/* Section 2: Measurements */}
         <Card className="p-6">
           <details className="group">
-            <summary className="text-lg font-semibold text-slate-900 pb-3 mb-2 cursor-pointer list-none flex justify-between items-center border-b border-slate-100">
-              <span>Diagnostic Measurements <span className="text-sm font-normal text-slate-500 ml-2">(Optional)</span></span>
+            <summary className="text-lg font-semibold text-primary-900 pb-3 mb-2 cursor-pointer list-none flex justify-between items-center border-b border-primary-100">
+              <span>Diagnostic Measurements <span className="text-sm font-normal text-primary-500 ml-2">(Optional)</span></span>
               <span className="transition group-open:rotate-180">
                 <svg fill="none" height="24" shapeRendering="geometricPrecision" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
               </span>
@@ -456,7 +456,7 @@ function ServiceRecordForm({
 
         {/* Section 3: Findings & Recs */}
         <Card className="p-6">
-          <h2 className="text-lg font-semibold text-slate-900 border-b border-slate-100 pb-3 mb-4">Findings & Recommendations</h2>
+          <h2 className="text-lg font-semibold text-brand-tertiary border-b border-primary-100 pb-3 mb-4">Findings & Recommendations</h2>
           <div className="space-y-4">
             <Textarea
               label="Findings"
@@ -477,7 +477,7 @@ function ServiceRecordForm({
           </div>
         </Card>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+        <div className="flex justify-end gap-3 pt-4 border-t border-primary-200">
           <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={isSaving}>
             Cancel
           </Button>

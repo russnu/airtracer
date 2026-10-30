@@ -92,7 +92,7 @@ export function PendingSyncPage() {
           Sync now
         </Button>
         {!isOnline && (
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-primary-500">
             You're offline. Records will sync when the connection returns.
           </span>
         )}
@@ -145,10 +145,10 @@ export function PendingSyncPage() {
                   <Card padding="sm" className="space-y-2">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-medium text-slate-900">
+                        <p className="font-medium text-primary-900">
                           {item.payload.serviceType}
                         </p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-primary-500">
                           {item.assetLabel ?? 'Unknown unit'} ·{' '}
                           {new Date(item.payload.serviceDate).toLocaleDateString()}
                         </p>
@@ -156,7 +156,7 @@ export function PendingSyncPage() {
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </div>
 
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-primary-400">
                       Saved {new Date(item.createdAt).toLocaleString()}
                       {item.attempts > 0 &&
                         ` · ${item.attempts} attempt${item.attempts === 1 ? '' : 's'}`}
@@ -167,7 +167,7 @@ export function PendingSyncPage() {
                         className={`text-sm ${
                           item.status === 'needs_attention'
                             ? 'text-error-700'
-                            : 'text-slate-600'
+                            : 'text-primary-600'
                         }`}
                       >
                         {item.lastError.message}

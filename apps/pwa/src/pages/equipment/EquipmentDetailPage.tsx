@@ -24,6 +24,8 @@ import {
   PiSquaresFourBold,
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
+import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
+import { serviceStatusBadgeVariant } from "../../components/service-records/serviceStatus";
 
 export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -97,21 +99,6 @@ export function EquipmentDetailPage() {
   const qrUrl = asset.qrCode
     ? `${window.location.origin}/qr/${asset.qrCode.token}`
     : "";
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "info";
-      case "IN_PROGRESS":
-        return "warning";
-      case "COMPLETED":
-        return "success";
-      case "CANCELLED":
-        return "error";
-      default:
-        return "neutral";
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -263,43 +250,41 @@ export function EquipmentDetailPage() {
             <h2 className="text-xl font-bold mb-4 text-blue-600">
               Service History
             </h2>
-            {!asset.serviceRecords || asset.serviceRecords.length === 0 ? (
-              <EmptyState
-                title="No service records"
-                description="This equipment has not been serviced yet."
-              />
-            ) : (
-              <div className="space-y-4">
-                {asset.serviceRecords.map((record: ServiceRecord) => (
-                  <Link
-                    key={record.id}
-                    to={`/service-records/${record.id}`}
-                    className="block group"
-                  >
-                    <div className="border border-slate-200 rounded-lg p-4 hover:border-blue-500 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-                            {record.serviceType}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {new Date(record.serviceDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Badge variant={getStatusBadgeVariant(record.status)}>
-                          {record.status}
-                        </Badge>
-                      </div>
-                      {record.description && (
-                        <p className="text-sm text-slate-600 line-clamp-2">
-                          {record.description}
-                        </p>
-                      )}
+            <ServiceTimeline
+              records={asset.serviceRecords ?? []}
+              getStatus={(record: ServiceRecord) => record.status}
+              emptyState={
+                <EmptyState
+                  title="No service records"
+                  description="This equipment has not been serviced yet."
+                />
+              }
+              renderRecord={(record: ServiceRecord) => (
+                <Link
+                  to={`/service-records/${record.id}`}
+                  className="block group"
+                >
+                  <div className="border border-slate-200 rounded-lg p-4 hover:border-blue-500 transition-colors">
+                    <div className="flex flex-wrap justify-between items-start gap-2">
+                      <p className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors wrap-break-word">
+                        {record.serviceType}
+                      </p>
+                      <Badge
+                        variant={serviceStatusBadgeVariant(record.status)}
+                        className="shrink-0"
+                      >
+                        {record.status}
+                      </Badge>
                     </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+                    {record.description && (
+                      <p className="text-sm text-slate-600 line-clamp-2 mt-2">
+                        {record.description}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              )}
+            />
           </Card>
         </div>
 

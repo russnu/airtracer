@@ -30,6 +30,7 @@ import {
   PiUserGear,
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
+import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 
 export function PassportPage() {
   const { token } = useParams<{ token: string }>();
@@ -346,21 +347,20 @@ export function PassportPage() {
             Service History
           </h2>
 
-          {serviceHistory.length === 0 ? (
-            <Card className="p-8 text-center text-slate-500">
-              No service records found for this equipment.
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {serviceHistory.map((record) => (
-                <ServiceRecordItem
-                  key={record.id}
-                  record={record}
-                  offlinePhotoCount={view.photoCounts[record.id] ?? 0}
-                />
-              ))}
-            </div>
-          )}
+          <ServiceTimeline
+            records={serviceHistory}
+            emptyState={
+              <Card className="p-8 text-center text-slate-500">
+                No service records found for this equipment.
+              </Card>
+            }
+            renderRecord={(record) => (
+              <ServiceRecordItem
+                record={record}
+                offlinePhotoCount={view.photoCounts[record.id] ?? 0}
+              />
+            )}
+          />
         </section>
       </main>
     </div>
@@ -386,18 +386,11 @@ function ServiceRecordItem({
       m.supplyAirTemp !== null);
 
   return (
-    <Card className="overflow-hidden">
-      <div className="p-5 border-b border-slate-100 bg-white">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">
-              {record.serviceType}
-            </h3>
-            <p className="text-sm text-slate-500 mt-1">
-              {new Date(record.serviceDate).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
+    <Card padding="none" className="overflow-hidden">
+      <div className="p-4 sm:p-5 border-b border-slate-100 bg-white">
+        <h3 className="text-base font-semibold text-slate-900 break-words">
+          {record.serviceType}
+        </h3>
 
         {record.description && (
           <p className="text-sm text-slate-700 mt-3 whitespace-pre-wrap">

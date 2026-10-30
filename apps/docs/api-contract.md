@@ -44,18 +44,51 @@ Responses:
 
 **Audit.** The `SERVICE_RECORD_CREATED` audit entry includes `clientRequestId` and `clientCapturedAt` (null when not sent). Audit entries for one asset are written under a per-asset database lock, so the hash chain stays linear under concurrent writes.
 
+### Reading service records
+
+Any owner or technician may read any service record. Only the record's technician may change its status, and only the asset owner or the record's technician may add photos.
+
+| Method and path | Who may call it | Responses |
+|---|---|---|
+| `GET /service-records/mine` | `TECHNICIAN` | 200 the caller's records, newest `serviceDate` first |
+| `GET /service-records/:id` | `OWNER` or `TECHNICIAN` | 200; 404 record not found |
+| `GET /assets/:assetId/service-records` | `OWNER` or `TECHNICIAN` | 200 records, newest `serviceDate` first; 404 asset not found |
+
+`GET /service-records/:id` returns the record with `asset: { id, brand, model, serialNumber, location, ownerId }`. Each item from `GET /service-records/mine` has the same `asset` object plus `photoCount` (number). `GET /assets/:assetId/service-records` returns records without `asset`.
+
+### `PATCH /service-records/:id/status`
+
+Body: `{ "status": "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED" }`. **Role:** `TECHNICIAN` who created the record. Online only.
+
+Allowed changes:
+
+| From | To |
+|---|---|
+| `PENDING` | `IN_PROGRESS`, `CANCELLED` |
+| `IN_PROGRESS` | `COMPLETED`, `CANCELLED` |
+| `COMPLETED`, `CANCELLED` | none (final) |
+
+| Status | When |
+|---|---|
+| 200 | Updated, or the status was already the requested one (no audit entry is written) |
+| 400 | Validation failed, or the change is not allowed |
+| 403 | Caller is not the technician who created the record |
+| 404 | Record not found |
+
+Audit events: `SERVICE_RECORD_COMPLETED`, `SERVICE_RECORD_CANCELLED`, or `SERVICE_RECORD_UPDATED` for other changes, with `changes.status.from` and `.to`.
+
 ## Service photos
 
 Upload limits: one file per request, at most **10 MB**, and the file content must be JPEG, PNG, or WebP. The declared content type must match the detected one.
 
 | Method and path | Who may call it | Responses |
 |---|---|---|
-| `POST /service-photo/:serviceRecordId` (multipart `file`, optional `caption`) | `TECHNICIAN` who created the service record | 201; 400 missing or disallowed file; 403 other users; 404 record not found; 413 file too large |
-| `GET /service-photo/:serviceRecordId` | The asset owner or the technician who created the record | 200 list with signed URLs (valid 1 hour); 403 other users; 404 record not found |
+| `POST /service-photo/:serviceRecordId` (multipart `file`, optional `caption`) | The asset owner or the `TECHNICIAN` who created the service record | 201; 400 missing or disallowed file; 403 other users; 404 record not found; 413 file too large |
+| `GET /service-photo/:serviceRecordId` | Any `OWNER` or `TECHNICIAN` | 200 list with signed URLs (valid 1 hour); 403 other roles; 404 record not found |
 | `PATCH /service-photo/:id` (`caption`) | `TECHNICIAN` who created the service record | 200; 403; 404 |
 | `DELETE /service-photo/:id` | `TECHNICIAN` who created the service record | 200; 403; 404 |
 
-Owners cannot delete photos; photos are evidence attached by the technician.
+Owners can add photos but cannot edit or delete any photo; editing and deleting stay with the record's technician. Authorization is checked before the file, so a disallowed user gets 403 even for an invalid file.
 
 ## Public passport
 

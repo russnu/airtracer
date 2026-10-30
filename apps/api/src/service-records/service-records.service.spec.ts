@@ -2,11 +2,21 @@ import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
 
 import { ServiceRecordsService } from './service-records.service';
+
+const assetSummarySelect = {
+  id: true,
+  brand: true,
+  model: true,
+  serialNumber: true,
+  location: true,
+  ownerId: true,
+};
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { Event, ServiceStatus } from '../../generated/prisma/enums';
@@ -321,6 +331,9 @@ describe('ServiceRecordsService', () => {
         where: {
           id: serviceRecordId,
         },
+        include: {
+          asset: { select: assetSummarySelect },
+        },
       });
 
       expect(result).toEqual(serviceRecord);
@@ -332,6 +345,40 @@ describe('ServiceRecordsService', () => {
       await expect(service.findOne(serviceRecordId)).rejects.toThrow(
         new NotFoundException('Service record not found'),
       );
+    });
+  });
+
+  //==========================================================================//
+  // findByTechnician
+  //==========================================================================//
+
+  describe('findByTechnician', () => {
+    it("should return the technician's records with asset details and photo counts", async () => {
+      const assetSummary = {
+        id: assetId,
+        brand: asset.brand,
+        model: asset.model,
+        serialNumber: asset.serialNumber,
+        location: asset.location,
+        ownerId: asset.ownerId,
+      };
+      prismaMock.serviceRecord.findMany.mockResolvedValue([
+        { ...serviceRecord, asset: assetSummary, _count: { photos: 2 } },
+      ]);
+
+      const result = await service.findByTechnician(technicianId);
+
+      expect(prismaMock.serviceRecord.findMany).toHaveBeenCalledWith({
+        where: { technicianId },
+        orderBy: { serviceDate: 'desc' },
+        include: {
+          asset: { select: assetSummarySelect },
+          _count: { select: { photos: true } },
+        },
+      });
+      expect(result).toEqual([
+        { ...serviceRecord, asset: assetSummary, photoCount: 2 },
+      ]);
     });
   });
 
@@ -394,12 +441,17 @@ describe('ServiceRecordsService', () => {
         status: ServiceStatus.COMPLETED,
       };
 
+      const inProgressRecord = {
+        ...serviceRecord,
+        status: ServiceStatus.IN_PROGRESS,
+      };
+
       const updatedRecord = {
         ...serviceRecord,
         status: ServiceStatus.COMPLETED,
       };
 
-      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(inProgressRecord);
 
       txMock.serviceRecord.update.mockResolvedValue(updatedRecord);
 
@@ -433,7 +485,7 @@ describe('ServiceRecordsService', () => {
             serviceRecordId: serviceRecord.id,
             changes: {
               status: {
-                from: ServiceStatus.PENDING,
+                from: ServiceStatus.IN_PROGRESS,
                 to: ServiceStatus.COMPLETED,
               },
             },
@@ -540,6 +592,39 @@ describe('ServiceRecordsService', () => {
       await expect(
         service.updateStatus(serviceRecordId, technicianId, dto),
       ).rejects.toThrow(new NotFoundException('Service record not found'));
+
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+      expect(auditServiceMock.log).not.toHaveBeenCalled();
+    });
+
+    it('should reject a status change by a technician who did not create the record', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+
+      await expect(
+        service.updateStatus(serviceRecordId, 'technician-2', {
+          status: ServiceStatus.IN_PROGRESS,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prismaMock.$transaction).not.toHaveBeenCalled();
+      expect(auditServiceMock.log).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [ServiceStatus.PENDING, ServiceStatus.COMPLETED],
+      [ServiceStatus.IN_PROGRESS, ServiceStatus.PENDING],
+      [ServiceStatus.COMPLETED, ServiceStatus.IN_PROGRESS],
+      [ServiceStatus.COMPLETED, ServiceStatus.CANCELLED],
+      [ServiceStatus.CANCELLED, ServiceStatus.PENDING],
+    ])('should reject the transition from %s to %s', async (from, to) => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue({
+        ...serviceRecord,
+        status: from,
+      });
+
+      await expect(
+        service.updateStatus(serviceRecordId, technicianId, { status: to }),
+      ).rejects.toThrow(BadRequestException);
 
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
       expect(auditServiceMock.log).not.toHaveBeenCalled();

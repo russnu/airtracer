@@ -152,8 +152,25 @@ export interface ServiceRecord {
   findings: string | null;
   recommendations: string | null;
   photos?: ServicePhoto[];
+  /** Included by GET /service-records/:id and /service-records/mine. */
+  asset?: ServiceRecordAsset;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ServiceRecordAsset {
+  id: string;
+  brand: string;
+  model: string;
+  serialNumber: string | null;
+  location: string | null;
+  ownerId: string;
+}
+
+/** An item from GET /service-records/mine. */
+export interface TechnicianServiceRecord extends ServiceRecord {
+  asset: ServiceRecordAsset;
+  photoCount: number;
 }
 
 export interface CreateServiceRecordPayload {

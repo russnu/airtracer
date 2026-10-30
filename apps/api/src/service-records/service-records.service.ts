@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -10,6 +11,30 @@ import { CreateServiceRecordDto } from './dto/create-service-record.dto';
 import { AuditService } from '../audit/audit.service';
 import { Event, ServiceStatus } from '../../generated/prisma/enums';
 import { UpdateServiceRecordStatusDto } from './dto/update-service-record-status.dto';
+
+// PENDING -> IN_PROGRESS -> COMPLETED, with CANCELLED reachable from either
+// open status. COMPLETED and CANCELLED are final.
+export const ALLOWED_STATUS_TRANSITIONS: Record<
+  ServiceStatus,
+  readonly ServiceStatus[]
+> = {
+  [ServiceStatus.PENDING]: [ServiceStatus.IN_PROGRESS, ServiceStatus.CANCELLED],
+  [ServiceStatus.IN_PROGRESS]: [
+    ServiceStatus.COMPLETED,
+    ServiceStatus.CANCELLED,
+  ],
+  [ServiceStatus.COMPLETED]: [],
+  [ServiceStatus.CANCELLED]: [],
+};
+
+const assetSummarySelect = {
+  id: true,
+  brand: true,
+  model: true,
+  serialNumber: true,
+  location: true,
+  ownerId: true,
+} satisfies Prisma.AssetSelect;
 
 @Injectable()
 export class ServiceRecordsService {
@@ -169,6 +194,9 @@ export class ServiceRecordsService {
   async findOne(id: string) {
     const serviceRecord = await this.prisma.serviceRecord.findUnique({
       where: { id },
+      include: {
+        asset: { select: assetSummarySelect },
+      },
     });
 
     if (!serviceRecord) {
@@ -176,6 +204,25 @@ export class ServiceRecordsService {
     }
 
     return serviceRecord;
+  }
+  //-------------------------------------------------------------//
+  // Records created by the given technician, newest first.
+  async findByTechnician(technicianId: string) {
+    const serviceRecords = await this.prisma.serviceRecord.findMany({
+      where: { technicianId },
+      orderBy: {
+        serviceDate: 'desc',
+      },
+      include: {
+        asset: { select: assetSummarySelect },
+        _count: { select: { photos: true } },
+      },
+    });
+
+    return serviceRecords.map(({ _count, ...serviceRecord }) => ({
+      ...serviceRecord,
+      photoCount: _count.photos,
+    }));
   }
   //-------------------------------------------------------------//
   async findByAsset(assetId: string) {
@@ -204,9 +251,23 @@ export class ServiceRecordsService {
       throw new NotFoundException('Service record not found');
     }
 
+    if (serviceRecord.technicianId !== technicianId) {
+      throw new ForbiddenException(
+        'Only the technician who created this service record can change its status.',
+      );
+    }
+
     // Don't create an audit event if the status is unchanged.
     if (serviceRecord.status === dto.status) {
       return serviceRecord;
+    }
+
+    if (
+      !ALLOWED_STATUS_TRANSITIONS[serviceRecord.status].includes(dto.status)
+    ) {
+      throw new BadRequestException(
+        `Cannot change status from ${serviceRecord.status} to ${dto.status}.`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {

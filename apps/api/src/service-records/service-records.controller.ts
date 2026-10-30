@@ -21,18 +21,27 @@ export class ServiceRecordsController {
     return this.serviceRecordService.create(assetId, user.id, dto);
   }
   //-------------------------------------------------------------//
-  @Roles(RoleName.OWNER)
+  // Declared before `/service-records/:id` so "mine" is not read as an ID.
+  @Roles(RoleName.TECHNICIAN)
+  @Get('/service-records/mine')
+  findMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.serviceRecordService.findByTechnician(user.id);
+  }
+  //-------------------------------------------------------------//
+  // Any owner or technician may read any service record.
+  @Roles(RoleName.OWNER, RoleName.TECHNICIAN)
   @Get('/service-records/:id')
   findOne(@Param('id') id: string) {
     return this.serviceRecordService.findOne(id);
   }
   //-------------------------------------------------------------//
-  @Roles(RoleName.OWNER)
+  @Roles(RoleName.OWNER, RoleName.TECHNICIAN)
   @Get('/assets/:assetId/service-records')
   findByAsset(@Param('assetId') assetId: string) {
     return this.serviceRecordService.findByAsset(assetId);
   }
   //-------------------------------------------------------------//
+  // Only the technician who created the record; see ALLOWED_STATUS_TRANSITIONS.
   @Roles(RoleName.TECHNICIAN)
   @Patch('/service-records/:id/status')
   updateStatus(

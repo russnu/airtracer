@@ -16,6 +16,7 @@ import { ScannerPage } from "./pages/scanner/ScannerPage";
 import { CreateServiceRecordPage } from "./pages/service-records/CreateServiceRecordPage";
 import { ServiceRecordDetailPage } from "./pages/service-records/ServiceRecordDetailPage";
 import { PendingSyncPage } from "./pages/service-records/PendingSyncPage";
+import { TechnicianServiceRecordsPage } from "./pages/service-records/TechnicianServiceRecordsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,10 @@ export default function App() {
                 />
 
                 {/* Service record routes */}
+                <Route
+                  path="/service-records"
+                  element={<TechnicianServiceRecordsPage />}
+                />
                 <Route
                   path="/equipment/:assetId/service-records/new"
                   element={<CreateServiceRecordPage />}

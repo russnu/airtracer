@@ -10,6 +10,7 @@ import type {
   RegisterPayload,
   ServiceRecord,
   ServicePhotoWithUrl,
+  TechnicianServiceRecord,
   UpdateAssetPayload,
   UpdateServiceRecordStatusPayload,
   UserResponse,
@@ -232,6 +233,11 @@ export const serviceRecordsApi = {
 
   findOne(id: string): Promise<ServiceRecord> {
     return request(`/service-records/${id}`);
+  },
+
+  /** The signed-in technician's records, newest first. */
+  findMine(): Promise<TechnicianServiceRecord[]> {
+    return request('/service-records/mine');
   },
 
   findByAsset(assetId: string): Promise<ServiceRecord[]> {

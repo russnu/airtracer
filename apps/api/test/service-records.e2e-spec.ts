@@ -15,7 +15,9 @@ describe('Service records and photos E2E', () => {
   const runId = Date.now();
 
   let ownerToken: string;
+  let otherOwnerToken: string;
   let technicianToken: string;
+  let technicianId: string;
   let otherTechnicianToken: string;
 
   const userIds: string[] = [];
@@ -76,7 +78,10 @@ describe('Service records and photos E2E', () => {
 
     const owner = await register(RoleName.OWNER, 'owner');
     ownerToken = owner.token;
-    technicianToken = (await register(RoleName.TECHNICIAN, 'tech')).token;
+    otherOwnerToken = (await register(RoleName.OWNER, 'owner2')).token;
+    const technician = await register(RoleName.TECHNICIAN, 'tech');
+    technicianToken = technician.token;
+    technicianId = technician.id;
     otherTechnicianToken = (await register(RoleName.TECHNICIAN, 'tech2')).token;
 
     const asset = await prisma.asset.create({
@@ -311,10 +316,23 @@ describe('Service records and photos E2E', () => {
       serviceRecordId = response.body.id;
     });
 
-    it('PH-001: should reject an upload by an owner', async () => {
+    it('PH-001: should let the asset owner past the upload authorization check', async () => {
+      // A disallowed file is rejected after authorization, so a 400 (not 403)
+      // shows the owner may upload without writing to storage.
       await request(app.getHttpServer())
         .post(`/service-photo/${serviceRecordId}`)
         .set('Authorization', `Bearer ${ownerToken}`)
+        .attach('file', Buffer.from('<svg></svg>'), {
+          filename: 'a.svg',
+          contentType: 'image/svg+xml',
+        })
+        .expect(400);
+    });
+
+    it('PH-006: should reject an upload by an owner of a different asset', async () => {
+      await request(app.getHttpServer())
+        .post(`/service-photo/${serviceRecordId}`)
+        .set('Authorization', `Bearer ${otherOwnerToken}`)
         .attach('file', jpeg, { filename: 'a.jpg', contentType: 'image/jpeg' })
         .expect(403);
     });
@@ -347,11 +365,137 @@ describe('Service records and photos E2E', () => {
       expect(response.body).toEqual([]);
     });
 
-    it('PH-005: should not let an unrelated technician list photos', async () => {
+    it('PH-005: should let any technician or owner list photos', async () => {
+      for (const token of [otherTechnicianToken, otherOwnerToken]) {
+        await request(app.getHttpServer())
+          .get(`/service-photo/${serviceRecordId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+      }
+    });
+  });
+
+  // ============================================================= //
+  // READ ACCESS
+  // ============================================================= //
+
+  interface RecordBody {
+    id: string;
+    technicianId: string;
+    status: string;
+    photoCount?: number;
+    asset?: { id: string; brand: string };
+  }
+
+  async function createRecordId() {
+    const response = await createRecord(technicianToken, assetId, {
+      ...baseRecord,
+      clientRequestId: randomUUID(),
+    }).expect(201);
+    return (response.body as RecordBody).id;
+  }
+
+  describe('service record read access', () => {
+    let serviceRecordId: string;
+
+    beforeAll(async () => {
+      serviceRecordId = await createRecordId();
+    });
+
+    it('RD-001: should let any owner or technician read a record with its asset', async () => {
+      for (const token of [ownerToken, otherOwnerToken, otherTechnicianToken]) {
+        const response = await request(app.getHttpServer())
+          .get(`/service-records/${serviceRecordId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(200);
+        expect((response.body as RecordBody).asset).toMatchObject({
+          id: assetId,
+        });
+      }
+    });
+
+    it('RD-002: should let a technician list an asset’s records', async () => {
       await request(app.getHttpServer())
-        .get(`/service-photo/${serviceRecordId}`)
+        .get(`/assets/${assetId}/service-records`)
         .set('Authorization', `Bearer ${otherTechnicianToken}`)
+        .expect(200);
+    });
+
+    it('RD-003: should list only the caller’s records on /service-records/mine', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/service-records/mine')
+        .set('Authorization', `Bearer ${technicianToken}`)
+        .expect(200);
+
+      const records = response.body as RecordBody[];
+      expect(records.length).toBeGreaterThan(0);
+      for (const record of records) {
+        expect(record.technicianId).toBe(technicianId);
+        expect(typeof record.photoCount).toBe('number');
+        expect(record.asset).toHaveProperty('brand');
+      }
+      expect(records.some((record) => record.id === serviceRecordId)).toBe(
+        true,
+      );
+
+      const other = await request(app.getHttpServer())
+        .get('/service-records/mine')
+        .set('Authorization', `Bearer ${otherTechnicianToken}`)
+        .expect(200);
+      expect(
+        (other.body as RecordBody[]).some(
+          (record) => record.id === serviceRecordId,
+        ),
+      ).toBe(false);
+    });
+
+    it('RD-004: should reject /service-records/mine for an owner', async () => {
+      await request(app.getHttpServer())
+        .get('/service-records/mine')
+        .set('Authorization', `Bearer ${ownerToken}`)
         .expect(403);
+    });
+  });
+
+  // ============================================================= //
+  // STATUS CHANGES
+  // ============================================================= //
+
+  describe('PATCH /service-records/:id/status', () => {
+    let serviceRecordId: string;
+
+    function setStatus(token: string, status: string) {
+      return request(app.getHttpServer())
+        .patch(`/service-records/${serviceRecordId}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status });
+    }
+
+    beforeAll(async () => {
+      serviceRecordId = await createRecordId();
+    });
+
+    it('ST-001: should reject a change by another technician', async () => {
+      await setStatus(otherTechnicianToken, 'IN_PROGRESS').expect(403);
+    });
+
+    it('ST-002: should reject a change by an owner', async () => {
+      await setStatus(ownerToken, 'IN_PROGRESS').expect(403);
+    });
+
+    it('ST-003: should reject skipping from PENDING to COMPLETED', async () => {
+      await setStatus(technicianToken, 'COMPLETED').expect(400);
+    });
+
+    it('ST-004: should follow PENDING -> IN_PROGRESS -> COMPLETED and then stay final', async () => {
+      await setStatus(technicianToken, 'IN_PROGRESS').expect(200);
+      const completed = await setStatus(technicianToken, 'COMPLETED').expect(
+        200,
+      );
+      expect((completed.body as RecordBody).status).toBe('COMPLETED');
+
+      await setStatus(technicianToken, 'CANCELLED').expect(400);
+      await setStatus(technicianToken, 'IN_PROGRESS').expect(400);
     });
   });
 });

@@ -54,6 +54,8 @@ export interface QRCode {
   generatedAt: string;
   createdAt: string;
   updatedAt: string;
+  /** Passport URL built by the API from QR_BASE_URL. */
+  url: string;
 }
 
 export interface Asset {
@@ -133,6 +135,8 @@ export interface PublicServiceRecord {
 }
 
 export interface PublicPassportResponse {
+  /** Passport URL for sharing. Missing on copies shown from offline storage. */
+  url?: string;
   asset: PublicAsset;
   serviceHistory: PublicServiceRecord[];
 }

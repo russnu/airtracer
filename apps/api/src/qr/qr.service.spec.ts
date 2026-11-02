@@ -16,6 +16,7 @@ import { Event } from '../../generated/prisma/client';
 import { generateQrToken } from './utils/qr.util';
 
 jest.mock('./utils/qr.util', () => ({
+  ...jest.requireActual<typeof import('./utils/qr.util')>('./utils/qr.util'),
   generateQrToken: jest.fn(),
 }));
 
@@ -338,6 +339,7 @@ describe('QrService', () => {
       });
 
       expect(result).toEqual({
+        url: `https://airtracer.local/qr/${token}`,
         asset: {
           id: asset.id,
           brand: asset.brand,
@@ -431,7 +433,7 @@ describe('QrService', () => {
         },
       });
 
-      prismaMock.qRCode.update.mockResolvedValue(updatedQrCode);
+      txMock.qRCode.update.mockResolvedValue(updatedQrCode);
 
       const result = await service.deactivate(token, ownerId);
 
@@ -450,12 +452,9 @@ describe('QrService', () => {
 
       expect(prismaMock.$transaction).toHaveBeenCalled();
 
-      /*
-       * Note:
-       * The current service uses this.prisma.qRCode.update()
-       * rather than tx.qRCode.update().
-       */
-      expect(prismaMock.qRCode.update).toHaveBeenCalledWith({
+      // The update runs in the same transaction as the audit log.
+      expect(prismaMock.qRCode.update).not.toHaveBeenCalled();
+      expect(txMock.qRCode.update).toHaveBeenCalledWith({
         where: {
           token,
         },

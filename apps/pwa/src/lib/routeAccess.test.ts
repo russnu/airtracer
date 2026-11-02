@@ -10,7 +10,13 @@ describe('canAccess', () => {
   });
 
   it('keeps equipment management to owners', () => {
-    for (const path of ['/equipment', '/equipment/new', '/equipment/a1', '/equipment/a1/edit']) {
+    for (const path of [
+      '/equipment',
+      '/equipment/new',
+      '/equipment/a1',
+      '/equipment/a1/edit',
+      '/equipment/a1/label',
+    ]) {
       expect(canAccess(path, ['OWNER'])).toBe(true);
       expect(canAccess(path, ['TECHNICIAN'])).toBe(false);
       expect(canAccess(path, ['ADMIN'])).toBe(false);

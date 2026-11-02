@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { generateQrToken } from './utils/qr.util';
+import { buildPassportUrl, generateQrToken } from './utils/qr.util';
 import { PublicPassportResponseDto } from './dto/public-passport-response.dto';
 import { Event } from '../../generated/prisma/client';
 import { AuditService } from '../audit/audit.service';
@@ -24,7 +24,7 @@ export class QrService {
   private buildQrUrl(token: string): string {
     const baseUrl = this.configService.getOrThrow<string>('QR_BASE_URL');
 
-    return `${baseUrl}/qr/${token}`;
+    return buildPassportUrl(baseUrl, token);
   }
   //-------------------------------------------------------------//
   private async verifyAssetOwnership(assetId: string, userId: string) {
@@ -210,6 +210,8 @@ export class QrService {
     );
 
     return {
+      url: this.buildQrUrl(qrCode.token),
+
       asset: {
         id: qrCode.asset.id,
         brand: qrCode.asset.brand,
@@ -232,7 +234,7 @@ export class QrService {
       throw new ConflictException('QR code is already inactive');
     }
     return this.prisma.$transaction(async (tx) => {
-      const updatedQr = this.prisma.qRCode.update({
+      const updatedQr = await tx.qRCode.update({
         where: {
           token,
         },

@@ -9,6 +9,14 @@ Verified contracts for the endpoints below, taken from the NestJS controllers, D
 - Error responses use the NestJS shape: `{ statusCode, message, error? }`.
 - A missing, invalid, or expired token returns **401**. A valid token without the required role returns **403**.
 
+## Assets
+
+### `GET /assets` and `GET /assets/:id` (`OWNER`)
+
+Return only the signed-in owner's assets, with `equipmentType` and `qrCode`. `GET /assets/:id` also includes `serviceRecords`, newest `serviceDate` first, and returns 404 for an asset that does not exist or belongs to another owner.
+
+`qrCode` is `null` or `{ id, token, assetId, isActive, generatedAt, createdAt, updatedAt, url }`. `url` is the passport URL `${QR_BASE_URL}/qr/${token}`. Clients use it for QR images, printed labels, and shared links instead of building it from their own origin.
+
 ## Service records
 
 ### `POST /assets/:assetId/service-records`
@@ -94,7 +102,7 @@ Owners can add photos but cannot edit or delete any photo; editing and deleting 
 
 ### `GET /qr/:token` (public)
 
-Returns `{ asset, serviceHistory }` with only the approved public fields. Photo URLs in `serviceHistory[].photos` are signed and expire after one hour.
+Returns `{ url, asset, serviceHistory }` with only the approved public fields. `url` is the passport URL for sharing, built the same way as `qrCode.url`. Photo URLs in `serviceHistory[].photos` are signed and expire after one hour.
 
 Each `serviceHistory` item has `id`, `serviceDate`, `serviceType`, `description`, `outcome`, `voidedAt`, `voidReason`, `measurements`, `findings`, `recommendations`, `technician: { name } | null` and `photos`. Voided records are included and are identified by a non-null `voidedAt`.
 

@@ -11,6 +11,7 @@ import { DashboardRouter } from "./pages/dashboard/DashboardRouter";
 import { EquipmentListPage } from "./pages/equipment/EquipmentListPage";
 import { EquipmentDetailPage } from "./pages/equipment/EquipmentDetailPage";
 import { EquipmentFormPage } from "./pages/equipment/EquipmentFormPage";
+import { EquipmentLabelPage } from "./pages/equipment/EquipmentLabelPage";
 import { PassportPage } from "./pages/passport/PassportPage";
 import { ScannerPage } from "./pages/scanner/ScannerPage";
 import { CreateServiceRecordPage } from "./pages/service-records/CreateServiceRecordPage";
@@ -41,6 +42,11 @@ export default function App() {
 
             {/* Protected routes */}
             <Route element={<ProtectedRoute />}>
+              {/* Outside the app layout so only the label is printed. */}
+              <Route
+                path="/equipment/:id/label"
+                element={<EquipmentLabelPage />}
+              />
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<DashboardRouter />} />
                 <Route path="/scan" element={<ScannerPage />} />

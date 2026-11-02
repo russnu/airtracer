@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AssetsService } from './assets.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { ConfigService } from '@nestjs/config';
 
 import { Event } from '../../generated/prisma/enums';
 
@@ -30,6 +31,10 @@ describe('AssetsService', () => {
 
   const auditServiceMock = {
     log: jest.fn(),
+  };
+
+  const configServiceMock = {
+    getOrThrow: jest.fn(),
   };
 
   const txMock = {
@@ -81,6 +86,8 @@ describe('AssetsService', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    configServiceMock.getOrThrow.mockReturnValue('https://airtracer.local');
+
     prismaMock.$transaction.mockImplementation(async (callback) =>
       callback(txMock),
     );
@@ -95,6 +102,10 @@ describe('AssetsService', () => {
         {
           provide: AuditService,
           useValue: auditServiceMock,
+        },
+        {
+          provide: ConfigService,
+          useValue: configServiceMock,
         },
       ],
     }).compile();
@@ -302,6 +313,28 @@ describe('AssetsService', () => {
       expect(result).toEqual(assets);
     });
 
+    it('should add the passport URL to assets that have a QR code', async () => {
+      const qrCode = { id: 'qr-1', token: 'ATR_test-token', isActive: true };
+
+      prismaMock.asset.findMany.mockResolvedValue([
+        { ...createdAsset, qrCode },
+        { ...createdAsset, id: 'asset-2', qrCode: null },
+      ]);
+
+      const result = await service.findAll(ownerId);
+
+      expect(result).toEqual([
+        {
+          ...createdAsset,
+          qrCode: {
+            ...qrCode,
+            url: 'https://airtracer.local/qr/ATR_test-token',
+          },
+        },
+        { ...createdAsset, id: 'asset-2', qrCode: null },
+      ]);
+    });
+
     it('should return an empty array when the owner has no assets', async () => {
       prismaMock.asset.findMany.mockResolvedValue([]);
 
@@ -351,6 +384,20 @@ describe('AssetsService', () => {
       });
 
       expect(result).toEqual(createdAsset);
+    });
+
+    it('should add the passport URL from QR_BASE_URL to the QR code', async () => {
+      const qrCode = { id: 'qr-1', token: 'ATR_test-token', isActive: true };
+
+      prismaMock.asset.findFirst.mockResolvedValue({ ...createdAsset, qrCode });
+
+      const result = await service.findOne(assetId, ownerId);
+
+      expect(configServiceMock.getOrThrow).toHaveBeenCalledWith('QR_BASE_URL');
+      expect(result).toEqual({
+        ...createdAsset,
+        qrCode: { ...qrCode, url: 'https://airtracer.local/qr/ATR_test-token' },
+      });
     });
 
     it('should throw NotFoundException when the asset does not exist', async () => {

@@ -19,6 +19,7 @@ const PROTECTED_PATHS: { path: string; roles: readonly string[] | null }[] = [
   { path: '/equipment/new', roles: ['OWNER'] },
   { path: '/equipment/:id', roles: ['OWNER'] },
   { path: '/equipment/:id/edit', roles: ['OWNER'] },
+  { path: '/equipment/:id/label', roles: ['OWNER'] },
   { path: '/equipment/:assetId/service-records/new', roles: ['TECHNICIAN'] },
   { path: '/service-records', roles: ['TECHNICIAN'] },
   { path: '/service-records/:id', roles: ['OWNER', 'TECHNICIAN'] },

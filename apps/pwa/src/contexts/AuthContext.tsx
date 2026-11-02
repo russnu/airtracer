@@ -19,8 +19,10 @@ import {
   clearStoredToken,
   getStoredToken,
   isNetworkError,
+  isStoredTokenChange,
   setStoredToken,
 } from '../lib/api-client';
+import { HOME_PATH } from '../lib/routeAccess';
 import { isTokenExpired, readTokenClaims } from '../lib/offline/jwt';
 import { clearSession, readSession, writeSession } from '../lib/offline/session';
 import {
@@ -35,7 +37,16 @@ interface AuthState {
   isAuthenticated: boolean;
   /** Signed in from the cached profile because the API could not be reached. */
   isOfflineSession: boolean;
+  /**
+   * Why the last session ended: `logout` when the user signed out, `expired`
+   * when the token was rejected or ran out. Null if there was no session.
+   */
+  endReason: SessionEndReason | null;
+  /** The account whose session ended, so only it returns to its last page. */
+  endedUserId: string | null;
 }
+
+type SessionEndReason = 'logout' | 'expired';
 
 interface AuthContextValue extends AuthState {
   login: (data: LoginPayload) => Promise<void>;
@@ -46,12 +57,30 @@ interface AuthContextValue extends AuthState {
   hasRole: (role: string) => boolean;
 }
 
-const SIGNED_OUT: AuthState = {
-  user: null,
-  isLoading: false,
-  isAuthenticated: false,
-  isOfflineSession: false,
-};
+function signedOut(
+  endReason: SessionEndReason | null = null,
+  endedUserId: string | null = null,
+): AuthState {
+  return {
+    user: null,
+    isLoading: false,
+    isAuthenticated: false,
+    isOfflineSession: false,
+    endReason,
+    endedUserId,
+  };
+}
+
+function signedIn(user: UserResponse, isOfflineSession = false): AuthState {
+  return {
+    user,
+    isLoading: false,
+    isAuthenticated: true,
+    isOfflineSession,
+    endReason: null,
+    endedUserId: null,
+  };
+}
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -110,18 +139,18 @@ async function restoreSession(token: string): Promise<AuthState> {
   if (claims && isTokenExpired(claims)) {
     clearStoredToken();
     await removeSnapshot();
-    return SIGNED_OUT;
+    return signedOut('expired', claims.sub);
   }
 
   try {
     const user = await authApi.me();
     await saveSnapshot(user);
-    return { user, isLoading: false, isAuthenticated: true, isOfflineSession: false };
+    return signedIn(user);
   } catch (error) {
     if (error instanceof ApiClientError && error.statusCode === 401) {
       clearStoredToken();
       await removeSnapshot();
-      return SIGNED_OUT;
+      return signedOut('expired', claims?.sub ?? null);
     }
 
     // Offline, unreachable, or a server error: fall back to the cached profile
@@ -132,36 +161,34 @@ async function restoreSession(token: string): Promise<AuthState> {
     }
     const snapshot = await loadSnapshot();
     if (snapshot && claims && snapshot.userId === claims.sub) {
-      return {
-        user: snapshot.user,
-        isLoading: false,
-        isAuthenticated: true,
-        isOfflineSession: true,
-      };
+      return signedIn(snapshot.user, true);
     }
-    return SIGNED_OUT;
+    return signedOut();
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Read once: restoring an expired token removes it from storage straight
+  // away, so a second run of the effect below (React StrictMode) must still
+  // see it, or the app would stay loading.
+  const [initialToken] = useState(getStoredToken);
   const [state, setState] = useState<AuthState>(() => ({
-    ...SIGNED_OUT,
-    isLoading: !!getStoredToken(),
+    ...signedOut(),
+    isLoading: !!initialToken,
   }));
 
   // Check for existing token on mount
   useEffect(() => {
-    const token = getStoredToken();
-    if (!token) return;
+    if (!initialToken) return;
 
     let cancelled = false;
-    restoreSession(token).then((next) => {
+    restoreSession(initialToken).then((next) => {
       if (!cancelled) setState(next);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialToken]);
 
   // Confirm an offline session with the API once the connection returns.
   useEffect(() => {
@@ -184,6 +211,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.isOfflineSession]);
 
   const queryClient = useQueryClient();
+  const userId = state.user?.id ?? null;
+
+  // Another tab signed out or signed in. Signing out here too keeps this tab
+  // from showing the old account; a different account reloads the app so no
+  // page, form, or cached data from the previous account survives.
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (!isStoredTokenChange(event)) return;
+
+      const token = getStoredToken();
+      if (!token) {
+        if (userId) {
+          queryClient.clear();
+          setState(signedOut('logout', userId));
+        }
+        return;
+      }
+      if (readTokenClaims(token)?.sub !== userId) {
+        window.location.replace(HOME_PATH);
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [userId, queryClient]);
 
   const startSession = useCallback(
     async (response: AuthResponse) => {
@@ -192,12 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await keepOnlyPassportsOf(response.user.id);
       // Drop any server data cached for a previous account.
       queryClient.clear();
-      setState({
-        user: response.user,
-        isLoading: false,
-        isAuthenticated: true,
-        isOfflineSession: false,
-      });
+      setState(signedIn(response.user));
     },
     [queryClient],
   );
@@ -217,15 +264,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    const userId = state.user?.id;
     clearStoredToken();
     await removeSnapshot();
     if (userId) {
       await removePassportsOf(userId);
     }
     queryClient.clear();
-    setState(SIGNED_OUT);
-  }, [state.user, queryClient]);
+    setState(signedOut('logout', userId));
+  }, [userId, queryClient]);
 
   // The token is no longer valid. Saved passports and unsynced records are
   // kept: they are removed or resumed when the next account signs in.
@@ -233,8 +279,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearStoredToken();
     await removeSnapshot();
     queryClient.clear();
-    setState(SIGNED_OUT);
-  }, [queryClient]);
+    setState(signedOut('expired', userId));
+  }, [userId, queryClient]);
 
   const hasRole = useCallback(
     (role: string) => {

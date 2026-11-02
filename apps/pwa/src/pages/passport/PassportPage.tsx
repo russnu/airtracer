@@ -324,7 +324,8 @@ export function PassportPage() {
               ) : (
                 <Link
                   to="/login"
-                  state={{ from: createRecordPath }}
+                  // Accounts that cannot add records return to the passport.
+                  state={{ from: createRecordPath, fallbackFrom: pathname }}
                   className={buttonClasses("primary", "md", "whitespace-nowrap")}
                 >
                   Log in to add a record

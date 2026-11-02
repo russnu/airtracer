@@ -34,6 +34,12 @@ export function clearStoredToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+/** Whether a `storage` event from another tab may have changed the token. */
+export function isStoredTokenChange(event: StorageEvent): boolean {
+  // A null key means the other tab cleared all of localStorage.
+  return event.key === null || event.key === TOKEN_KEY;
+}
+
 // ===== HTTP Client =====
 
 class ApiClientError extends Error {

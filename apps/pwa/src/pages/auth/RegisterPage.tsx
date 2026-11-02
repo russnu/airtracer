@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiClientError } from '../../lib/api-client';
-import { getReturnPath } from '../../lib/navigation';
+import { resolvePostLoginPath } from '../../lib/navigation';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
@@ -19,14 +19,14 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { register, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { register, user } = useAuth();
   const location = useLocation();
-  // Passed on from the login page when the user was sent there from another page.
-  const returnPath = getReturnPath(location.state);
 
-  if (isAuthenticated) {
-    return <Navigate to={returnPath} replace />;
+  // Registering re-renders this page with a user, which navigates away. The
+  // state is passed on from the login page when the user was sent there from
+  // another page.
+  if (user) {
+    return <Navigate to={resolvePostLoginPath(location.state, user)} replace />;
   }
 
   const validateForm = () => {
@@ -57,7 +57,6 @@ export function RegisterPage() {
         phoneNumber: phoneNumber || undefined,
         role,
       });
-      navigate(returnPath, { replace: true });
     } catch (err) {
       if (err instanceof ApiClientError) {
         if (err.statusCode === 409) {

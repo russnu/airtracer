@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { ApiClientError, isNetworkError } from "../../lib/api-client";
-import { getReturnPath } from "../../lib/navigation";
+import { resolvePostLoginPath } from "../../lib/navigation";
 import { useDeviceOutboxCounts } from "../../hooks/useOutbox";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -15,11 +15,8 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { login, user } = useAuth();
   const location = useLocation();
-  // Where the user was sent from, e.g. a passport or a protected page.
-  const returnPath = getReturnPath(location.state);
   // Signed out, so every unsynced record belongs to another session; only the
   // count is shown.
   const { data: deviceCounts } = useDeviceOutboxCounts();
@@ -27,8 +24,11 @@ export function LoginPage() {
     ? deviceCounts.own + deviceCounts.otherAccounts
     : 0;
 
-  if (isAuthenticated) {
-    return <Navigate to={returnPath} replace />;
+  // Signing in re-renders this page with a user, which navigates away: back
+  // to the page the user was sent from (e.g. a passport) if this account may
+  // open it, otherwise home.
+  if (user) {
+    return <Navigate to={resolvePostLoginPath(location.state, user)} replace />;
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -38,7 +38,6 @@ export function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate(returnPath, { replace: true });
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);

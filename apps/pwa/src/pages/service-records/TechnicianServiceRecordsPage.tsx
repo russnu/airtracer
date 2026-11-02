@@ -1,7 +1,12 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { PiImageBold, PiMapPinBold, PiQrCodeBold } from "react-icons/pi";
+import {
+  PiCaretRightBold,
+  PiImageBold,
+  PiMapPinBold,
+  PiQrCodeBold,
+} from "react-icons/pi";
 import { isNetworkError, serviceRecordsApi } from "../../lib/api-client";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOutbox } from "../../hooks/useOutbox";
@@ -16,7 +21,6 @@ import {
   PageHeader,
   Spinner,
 } from "../../components/ui";
-import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 import {
   SERVICE_OUTCOMES,
   serviceRecordState,
@@ -66,6 +70,7 @@ export function TechnicianServiceRecordsPage() {
     statusFilter === "ALL"
       ? searched
       : searched.filter((record) => serviceRecordState(record) === statusFilter);
+  const monthGroups = groupByMonth(visible);
 
   const countFor = (status: StatusFilter) =>
     status === "ALL"
@@ -206,60 +211,137 @@ export function TechnicianServiceRecordsPage() {
               ? "Your service records will load when the connection returns."
               : "Failed to load your service records."}
           </Alert>
-        ) : (
+        ) : monthGroups.length === 0 ? (
           <Card padding="sm" className="sm:p-6">
-            <ServiceTimeline
-              records={visible}
-              getState={serviceRecordState}
-              emptyState={
-                isFiltered ? (
-                  <EmptyState
-                    title="No matching records"
-                    description="Try a different search or outcome."
-                    action={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSearch("");
-                          setStatusFilter("ALL");
-                        }}
-                      >
-                        Clear filters
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <EmptyState
-                    title="No service records yet"
-                    description="Scan a unit's QR code to record your first service."
-                    action={
-                      <Link to="/scan">
-                        <Button size="sm">Scan QR</Button>
-                      </Link>
-                    }
-                  />
-                )
-              }
-              renderRecord={(record) => (
-                <ServiceRecordCard record={record} />
-              )}
-            />
+            {isFiltered ? (
+              <EmptyState
+                title="No matching records"
+                description="Try a different search or outcome."
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearch("");
+                      setStatusFilter("ALL");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                title="No service records yet"
+                description="Scan a unit's QR code to record your first service."
+                action={
+                  <Link to="/scan">
+                    <Button size="sm">Scan QR</Button>
+                  </Link>
+                }
+              />
+            )}
           </Card>
+        ) : (
+          <div className="space-y-4">
+            {monthGroups.map((group) => (
+              <section key={group.key} aria-labelledby={`month-${group.key}`}>
+                {/* Sticks below the app header (h-16 plus its border) */}
+                <h2
+                  id={`month-${group.key}`}
+                  className="sticky top-[65px] z-10 -mx-4 px-4 sm:mx-0 sm:px-0 py-2 bg-primary-50 text-xs font-semibold uppercase tracking-wide text-primary-500"
+                >
+                  {group.label}
+                  <span className="font-normal normal-case tracking-normal text-primary-400">
+                    {" "}
+                    · {group.records.length} record
+                    {group.records.length === 1 ? "" : "s"}
+                  </span>
+                </h2>
+                <Card padding="none" className="overflow-hidden">
+                  <ul className="divide-y divide-primary-100">
+                    {group.records.map((record) => (
+                      <li key={record.id}>
+                        <ServiceRecordRow record={record} />
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              </section>
+            ))}
+          </div>
         )}
       </section>
     </div>
   );
 }
 
-function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
+interface MonthGroup {
+  key: string;
+  label: string;
+  records: TechnicianServiceRecord[];
+}
+
+/** Newest first, split into calendar months. */
+function groupByMonth(records: TechnicianServiceRecord[]): MonthGroup[] {
+  const sorted = [...records].sort(
+    (a, b) =>
+      new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime(),
+  );
+  const groups: MonthGroup[] = [];
+  for (const record of sorted) {
+    const date = new Date(record.serviceDate);
+    const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+    const current = groups[groups.length - 1];
+    if (current?.key === key) {
+      current.records.push(record);
+    } else {
+      groups.push({
+        key,
+        label: date.toLocaleDateString(undefined, {
+          month: "long",
+          year: "numeric",
+        }),
+        records: [record],
+      });
+    }
+  }
+  return groups;
+}
+
+function ServiceRecordRow({ record }: { record: TechnicianServiceRecord }) {
   const { asset } = record;
   const state = serviceRecordState(record);
+  const isVoided = state === "VOIDED";
+  const date = new Date(record.serviceDate);
+
   return (
-    <Link to={`/service-records/${record.id}`} className="block group">
-      <div className="border border-primary-200 rounded-lg p-4 bg-white hover:border-accent-500 transition-colors">
-        <div className="flex flex-wrap justify-between items-start gap-2">
-          <p className="font-semibold text-primary-900 group-hover:text-accent-600 transition-colors break-words">
+    <Link
+      to={`/service-records/${record.id}`}
+      className={`group flex items-center gap-3 sm:gap-4 px-4 py-3 bg-white hover:bg-primary-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-500 ${
+        isVoided ? "opacity-75" : ""
+      }`}
+    >
+      {/* The month is in the section heading, so only day and weekday here */}
+      <time
+        dateTime={record.serviceDate}
+        className="w-10 shrink-0 self-start text-center pt-0.5"
+      >
+        <span className="block text-lg font-semibold text-primary-800 leading-tight">
+          {date.toLocaleDateString(undefined, { day: "2-digit" })}
+        </span>
+        <span className="block text-xs text-primary-400">
+          {date.toLocaleDateString(undefined, { weekday: "short" })}
+        </span>
+      </time>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap justify-between items-start gap-x-2 gap-y-1">
+          <p
+            className={`font-semibold text-primary-900 group-hover:text-accent-600 transition-colors break-words ${
+              isVoided ? "line-through" : ""
+            }`}
+          >
             {record.serviceType}
           </p>
           <Badge
@@ -269,26 +351,21 @@ function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
             {serviceRecordStateLabel(state)}
           </Badge>
         </div>
-        <p className="text-sm font-medium text-primary-700 mt-1 break-words">
+        <p className="text-sm text-primary-700 mt-0.5 break-words">
           {asset.brand} {asset.model}
           {asset.serialNumber && (
-            <span className="font-normal text-primary-500">
-              {" "}
-              · {asset.serialNumber}
-            </span>
+            <span className="text-primary-500"> · {asset.serialNumber}</span>
           )}
         </p>
-        {record.description && (
-          <p className="text-sm text-primary-600 line-clamp-2 mt-2">
-            {record.description}
-          </p>
-        )}
         {(asset.location || record.photoCount > 0) && (
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-primary-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-primary-500">
             {asset.location && (
-              <span className="inline-flex items-center gap-1">
-                <PiMapPinBold className="w-3.5 h-3.5" aria-hidden="true" />
-                {asset.location}
+              <span className="inline-flex items-center gap-1 min-w-0">
+                <PiMapPinBold
+                  className="w-3.5 h-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="truncate">{asset.location}</span>
               </span>
             )}
             {record.photoCount > 0 && (
@@ -300,6 +377,11 @@ function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
           </div>
         )}
       </div>
+
+      <PiCaretRightBold
+        className="w-4 h-4 shrink-0 text-primary-300 group-hover:text-accent-600 transition-colors"
+        aria-hidden="true"
+      />
     </Link>
   );
 }

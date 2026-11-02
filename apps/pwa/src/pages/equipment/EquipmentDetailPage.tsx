@@ -21,10 +21,13 @@ import {
   PiCheckCircleBold,
   PiGaugeBold,
   PiPencilSimpleBold,
+  PiPrinterBold,
   PiSnowflakeBold,
   PiSquaresFourBold,
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
+import { ShareLinkActions } from "../../components/ShareLinkActions";
+import { QR_LEVEL, QR_MARGIN_MODULES } from "../../lib/qrLabel";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 import {
   serviceRecordState,
@@ -101,9 +104,7 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const qrUrl = asset.qrCode
-    ? `${window.location.origin}/qr/${asset.qrCode.token}`
-    : "";
+  const isQrActive = asset.qrCode?.isActive ?? false;
 
   return (
     <div className="space-y-6">
@@ -297,16 +298,38 @@ export function EquipmentDetailPage() {
 
         <div className="space-y-6">
           <Card className="p-6">
-            <h2 className="text-xl font-bold mb-4 text-brand-tertiary">QR Tag</h2>
+            <h2 className="text-xl font-bold mb-4 text-brand-tertiary">
+              QR Tag
+            </h2>
             <div className="flex flex-col items-center text-center">
               {asset.qrCode ? (
                 <>
-                  <div className="bg-white p-4 border border-primary-200 rounded-xl mb-4">
-                    <QRCodeSVG value={qrUrl} size={150} />
+                  <Badge
+                    variant={isQrActive ? "success" : "neutral"}
+                    className="mb-3"
+                  >
+                    {isQrActive ? "QR active" : "QR inactive"}
+                  </Badge>
+                  <div
+                    className={`bg-white p-2 border border-primary-200 rounded-xl mb-4 ${isQrActive ? "" : "opacity-40"}`}
+                  >
+                    <QRCodeSVG
+                      value={asset.qrCode.url}
+                      size={166}
+                      level={QR_LEVEL}
+                      marginSize={QR_MARGIN_MODULES}
+                      title={`QR code for ${asset.brand} ${asset.model}`}
+                    />
                   </div>
+                  {!isQrActive && (
+                    <Alert variant="warning" className="mb-4 w-full text-left">
+                      This QR code is inactive, so scanning it shows no
+                      passport. Printing and sharing are turned off.
+                    </Alert>
+                  )}
                   <p className="text-sm text-primary-600 mb-2">
                     Token:{" "}
-                    <span className="font-mono text-xs font-semibold">
+                    <span className="font-mono text-xs font-semibold break-all">
                       {asset.qrCode.token}
                     </span>
                   </p>
@@ -315,6 +338,29 @@ export function EquipmentDetailPage() {
                     service history.
                   </p>
                   <div className="w-full space-y-2">
+                    {isQrActive ? (
+                      <Link
+                        to={`/equipment/${asset.id}/label`}
+                        className={buttonClasses("primary", "md", "w-full")}
+                      >
+                        <PiPrinterBold className="w-4 h-4" />
+                        Print label
+                      </Link>
+                    ) : (
+                      <Button
+                        className="w-full"
+                        disabled
+                        icon={<PiPrinterBold className="w-4 h-4" />}
+                      >
+                        Print label
+                      </Button>
+                    )}
+                    <ShareLinkActions
+                      url={asset.qrCode.url}
+                      title={`${asset.brand} ${asset.model} — AirTracer passport`}
+                      disabled={!isQrActive}
+                      fullWidth
+                    />
                     {/* Same tab, so Back returns to this page. */}
                     <Link
                       to={`/qr/${asset.qrCode.token}`}

@@ -8,13 +8,33 @@ import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { AuditService } from '../audit/audit.service';
 import { Event } from '../../generated/prisma/enums';
+import { ConfigService } from '@nestjs/config';
+import { buildPassportUrl } from '../qr/utils/qr.util';
 
 @Injectable()
 export class AssetsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly configService: ConfigService,
   ) {}
+  //-------------------------------------------------------------//
+  // Adds the passport URL to the asset's QR code so clients never build it.
+  private withQrUrl<T extends { qrCode: { token: string } | null }>(asset: T) {
+    if (!asset.qrCode) {
+      return asset;
+    }
+
+    const baseUrl = this.configService.getOrThrow<string>('QR_BASE_URL');
+
+    return {
+      ...asset,
+      qrCode: {
+        ...asset.qrCode,
+        url: buildPassportUrl(baseUrl, asset.qrCode.token),
+      },
+    };
+  }
   //-------------------------------------------------------------//
   async create(ownerId: string, dto: CreateAssetDto) {
     // Verify equipment type
@@ -91,7 +111,7 @@ export class AssetsService {
   }
   //-------------------------------------------------------------//
   async findAll(ownerId: string) {
-    return this.prisma.asset.findMany({
+    const assets = await this.prisma.asset.findMany({
       where: {
         ownerId,
       },
@@ -103,6 +123,8 @@ export class AssetsService {
         createdAt: 'desc',
       },
     });
+
+    return assets.map((asset) => this.withQrUrl(asset));
   }
   //-------------------------------------------------------------//
   async findOne(id: string, ownerId: string) {
@@ -126,7 +148,7 @@ export class AssetsService {
       throw new NotFoundException('Asset not found');
     }
 
-    return asset;
+    return this.withQrUrl(asset);
   }
   //-------------------------------------------------------------//
   async update(id: string, ownerId: string, dto: UpdateAssetDto) {

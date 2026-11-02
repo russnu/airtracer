@@ -217,6 +217,14 @@ describe('QR E2E', () => {
       expect(qrCode?.token).toBe(qrToken);
       expect(qrCode?.assetId).toBe(assetId);
       expect(qrCode?.isActive).toBe(true);
+
+      // The owner's asset view carries the same passport URL.
+      const assetResponse = await request(app.getHttpServer())
+        .get(`/assets/${assetId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(assetResponse.body.qrCode.url).toBe(response.body.url);
     });
 
     // QR-002
@@ -276,20 +284,19 @@ describe('QR E2E', () => {
         .get(`/qr/${qrToken}`)
         .expect(200);
 
-      expect(response.body).toMatchObject({
-        id: expect.any(String),
-        token: qrToken,
-        assetId,
-        isActive: true,
-      });
+      expect(response.body.url).toBe(
+        `${process.env.QR_BASE_URL}/qr/${qrToken}`,
+      );
 
       expect(response.body.asset).toMatchObject({
         id: assetId,
-        ownerId,
-        equipmentTypeId,
         brand: 'Daikin',
         model: 'FTKF35',
       });
+
+      // Only approved public fields are returned.
+      expect(response.body.asset).not.toHaveProperty('ownerId');
+      expect(response.body.serviceHistory).toBeInstanceOf(Array);
     });
 
     // QR-007

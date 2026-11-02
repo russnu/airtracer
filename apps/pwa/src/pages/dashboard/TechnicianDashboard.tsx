@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
+import { InstallNudge } from '../../components/InstallNudge';
 import { SavedPassportsList } from '../../components/offline/SavedPassportsList';
 import { Button } from '../../components/ui/Button';
 import { buttonClasses } from '../../components/ui/buttonClasses';
@@ -31,6 +32,8 @@ export function TechnicianDashboard() {
         <h1 className="text-2xl font-bold text-brand-tertiary">Welcome, {user?.firstName}!</h1>
         <p className="mt-2 text-sm text-primary-500">Ready to service equipment?</p>
       </div>
+
+      <InstallNudge />
 
       <div className="bg-white shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6 text-center">

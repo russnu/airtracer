@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "api", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "pwa",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "pwa", "dev"],
+      "port": 5173
+    }
+  ]
+}

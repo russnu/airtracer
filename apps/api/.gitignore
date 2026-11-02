@@ -56,3 +56,6 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
+
+# Photo storage keys left unreferenced by a seed run
+/prisma/seeds/.orphaned-storage-keys.txt

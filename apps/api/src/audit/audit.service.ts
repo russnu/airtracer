@@ -1,17 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { createHash } from 'crypto';
 
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAuditLogInput } from './types/create-audit-log.type';
+import { computeAuditHash } from './utils/audit-hash.util';
 import { Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
-  //-------------------------------------------------------------//
-  private generateHash(data: unknown): string {
-    return createHash('sha256').update(JSON.stringify(data)).digest('hex');
-  }
   //-------------------------------------------------------------//
   // Must be called inside the caller's transaction so the entry commits or rolls
   // back with the change it records.
@@ -30,16 +26,14 @@ export class AuditService {
     const previousHash = previousAudit?.hash ?? null;
     const createdAt = new Date();
 
-    const hashPayload = {
+    const hash = computeAuditHash({
       actorId: input.actorId ?? null,
       assetId: input.assetId,
       event: input.event,
       payload: input.payload ?? null,
       previousHash,
-      createdAt: createdAt.toISOString(),
-    };
-
-    const hash = this.generateHash(hashPayload);
+      createdAt,
+    });
 
     return tx.auditLog.create({
       data: {

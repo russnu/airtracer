@@ -11,6 +11,7 @@ import {
   Alert,
   EmptyState,
 } from "../../components/ui";
+import { buttonClasses } from "../../components/ui/buttonClasses";
 import type { Asset, ServiceRecord } from "../../types/api";
 import {
   PiArrowLeftBold,
@@ -308,13 +309,13 @@ export function EquipmentDetailPage() {
                     service history.
                   </p>
                   <div className="w-full space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => window.open(qrUrl, "_blank")}
+                    {/* Same tab, so Back returns to this page. */}
+                    <Link
+                      to={`/qr/${asset.qrCode.token}`}
+                      className={buttonClasses("outline", "md", "w-full")}
                     >
                       View Public Passport
-                    </Button>
+                    </Link>
                     <Button
                       variant="ghost"
                       className="w-full text-xs"

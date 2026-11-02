@@ -8,3 +8,4 @@ export * from './EmptyState';
 export * from './Spinner';
 export * from './PageHeader';
 export * from './Alert';
+export * from './BackButton';

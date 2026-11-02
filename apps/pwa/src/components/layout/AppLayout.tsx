@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { InstallAppButton } from "../InstallAppButton";
@@ -22,6 +22,15 @@ export function AppLayout() {
   const [unsyncedOnLogout, setUnsyncedOnLogout] = useState(0);
   const [isSyncingForLogout, setIsSyncingForLogout] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
 
   const finishLogout = async () => {
     await logout();
@@ -157,55 +166,92 @@ export function AppLayout() {
               <SyncStatusIndicator />
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-primary-400 hover:text-primary-500 hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-500"
+                aria-expanded={mobileMenuOpen}
+                aria-controls="mobile-menu"
+                className={`inline-flex items-center justify-center p-2 rounded-lg transition-colors duration-200 hover:bg-accent-50 hover:text-brand-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-500 ${
+                  mobileMenuOpen
+                    ? "bg-accent-50 text-brand-primary"
+                    : "text-primary-400"
+                }`}
               >
-                <span className="sr-only">Open main menu</span>
-                {mobileMenuOpen ? (
-                  <svg
-                    className="block h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="block h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  </svg>
-                )}
+                <span className="sr-only">
+                  {mobileMenuOpen ? "Close main menu" : "Open main menu"}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className={`block transition-transform duration-200 motion-reduce:transition-none ${
+                    mobileMenuOpen ? "rotate-90" : ""
+                  }`}
+                >
+                  {mobileMenuOpen ? (
+                    <svg
+                      className="block h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="block h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 6h16M4 12h16M4 18h16"
+                      />
+                    </svg>
+                  )}
+                </span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="sm:hidden border-t border-primary-200">
-            <div className="pt-2 pb-3 space-y-1">
+        {/* Always mounted so it can animate; inert keeps it out of tab order when closed. */}
+        <div
+          aria-hidden="true"
+          onClick={() => setMobileMenuOpen(false)}
+          className={`sm:hidden fixed inset-x-0 top-16 bottom-0 bg-brand-tertiary/20 transition-opacity duration-200 motion-reduce:transition-none ${
+            mobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        />
+        <div
+          id="mobile-menu"
+          inert={!mobileMenuOpen}
+          className={`sm:hidden absolute inset-x-0 top-full px-3 pt-2 ${
+            mobileMenuOpen ? "" : "pointer-events-none"
+          }`}
+        >
+          <div
+            className={`rounded-xl bg-accent-50 border border-accent-100 shadow-dropdown origin-top transition duration-200 ease-out motion-reduce:transition-none ${
+              mobileMenuOpen
+                ? "opacity-100 translate-y-0 scale-100"
+                : "opacity-0 -translate-y-2 scale-95"
+            }`}
+          >
+            <div className="py-2 space-y-1">
               {navItems.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
-                    isActive
-                      ? "bg-brand-secondary-50 border-brand-secondary text-brand-tertiary block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
-                      : "border-transparent text-primary-500 hover:bg-primary-50 hover:border-primary-300 hover:text-primary-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium"
+                    `mx-2 block rounded-lg border-l-4 px-3 py-2.5 text-base font-medium transition-colors ${
+                      isActive
+                        ? "bg-white border-brand-secondary text-brand-tertiary shadow-sm"
+                        : "border-transparent text-primary-600 hover:bg-accent-100 hover:text-brand-tertiary"
+                    }`
                   }
                   onClick={() => setMobileMenuOpen(false)}
                 >
@@ -213,8 +259,8 @@ export function AppLayout() {
                 </NavLink>
               ))}
             </div>
-            <div className="pt-4 pb-3 border-t border-primary-200">
-              <div className="flex items-center px-4">
+            <div className="pt-4 pb-2 border-t border-accent-100">
+              <div className="flex items-center px-5">
                 <div className="shrink-0">
                   <div className="h-10 w-10 rounded-full bg-brand-secondary-100 flex items-center justify-center text-brand-secondary-700 font-bold text-lg">
                     {user?.firstName?.[0] || ""}
@@ -238,14 +284,14 @@ export function AppLayout() {
                     setMobileMenuOpen(false);
                     handleLogout();
                   }}
-                  className="block w-full text-left px-4 py-2 text-base font-medium text-primary-500 hover:text-primary-800 hover:bg-primary-100"
+                  className="mx-2 block w-[calc(100%-1rem)] rounded-lg border-l-4 border-transparent px-3 py-2.5 text-left text-base font-medium text-primary-600 transition-colors hover:bg-accent-100 hover:text-brand-tertiary"
                 >
                   Sign out
                 </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </header>
 
       <OfflineBanner />

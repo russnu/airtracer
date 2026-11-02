@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PublicServiceRecord } from "../../types/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -21,11 +21,13 @@ import { Button } from "../../components/ui/Button";
 import { buttonClasses } from "../../components/ui/buttonClasses";
 import { Spinner } from "../../components/ui/Spinner";
 import { Alert } from "../../components/ui/Alert";
+import { BackButton } from "../../components/ui/BackButton";
 import {
   PiBarcodeBold,
   PiBuildingApartmentBold,
   PiCaretDownBold,
   PiGaugeBold,
+  PiHouseBold,
   PiSquaresFourBold,
   PiTagBold,
   PiUserGear,
@@ -35,7 +37,8 @@ import { ServiceTimeline } from "../../components/service-records/ServiceTimelin
 
 export function PassportPage() {
   const { token } = useParams<{ token: string }>();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading, hasRole } = useAuth();
+  const { pathname } = useLocation();
   const userId = user?.id ?? null;
   const queryClient = useQueryClient();
   const queryKey = ["passport", token, userId];
@@ -104,19 +107,42 @@ export function PassportPage() {
   if (error || !view) {
     const unavailable = error instanceof PassportUnavailableError;
     return (
-      <div className="max-w-3xl mx-auto p-4 sm:p-6 lg:p-8">
-        <Alert
-          variant="error"
-          title={unavailable ? "Passport Not Available" : "Error"}
-          className="mt-8"
-        >
-          {unavailable
-            ? "The QR code you scanned is either invalid, inactive, or not found in our system."
-            : error?.message || "Failed to load equipment passport."}
-          {unavailable && error.removedOfflineCopy && (
-            <> The offline copy saved on this device has been removed.</>
-          )}
-        </Alert>
+      <div className="min-h-screen bg-primary-50 pb-12">
+        <OfflineBanner />
+        <PassportHeader isSignedIn={!!userId} returnPath={pathname} />
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 space-y-4">
+          <Alert
+            variant="error"
+            title={unavailable ? "Passport Not Available" : "Error"}
+          >
+            {unavailable
+              ? "The QR code you scanned is either invalid, inactive, or not found in our system."
+              : error?.message || "Failed to load equipment passport."}
+            {unavailable && error.removedOfflineCopy && (
+              <> The offline copy saved on this device has been removed.</>
+            )}
+          </Alert>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {userId ? (
+              <>
+                <Link to="/scan" className={buttonClasses("primary")}>
+                  Scan another code
+                </Link>
+                <Link to="/dashboard" className={buttonClasses("outline")}>
+                  Go to dashboard
+                </Link>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                state={{ from: pathname }}
+                className={buttonClasses("primary")}
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
+        </main>
       </div>
     );
   }
@@ -127,23 +153,15 @@ export function PassportPage() {
     (item) => item.assetId === asset.id && item.status !== "synced",
   );
   const isSavedCopy = view.source === "saved";
+  // Only technicians can create service records (enforced by the API); signed-out
+  // visitors are offered a login that returns them to the record form.
+  const isTechnician = hasRole("TECHNICIAN");
+  const createRecordPath = `/equipment/${asset.id}/service-records/new`;
 
   return (
     <div className="min-h-screen bg-primary-50 pb-12">
       <OfflineBanner />
-      {/* Header */}
-      <header className="bg-primary-900 text-white py-6 px-4 shadow-md">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <span className="text-2xl font-bold tracking-tight text-accent-400">
-              AirTracer
-            </span>
-            <span className="text-sm font-medium text-primary-300 bg-primary-800 px-2 py-1 rounded">
-              Digital Passport
-            </span>
-          </div>
-        </div>
-      </header>
+      <PassportHeader isSignedIn={!!userId} returnPath={pathname} />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 space-y-8">
         {isSavedCopy && saved && (
@@ -282,20 +300,33 @@ export function PassportPage() {
         </section>
 
         {/* Technician CTA */}
-        <section>
-          <Card className="p-4 bg-accent-50 border-accent-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-accent-700 text-center sm:text-left">
-              Are you an authorized technician servicing this unit? Log in to
-              record maintenance.
-            </p>
-            <Link
-              to={`/equipment/${asset.id}/service-records/new`}
-              className={buttonClasses("primary", "md", "whitespace-nowrap")}
-            >
-              Add Service Record
-            </Link>
-          </Card>
-        </section>
+        {(isTechnician || !userId) && (
+          <section>
+            <Card className="p-4 bg-accent-50 border-accent-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-accent-700 text-center sm:text-left">
+                {isTechnician
+                  ? "Record maintenance for this unit."
+                  : "Are you an authorized technician servicing this unit? Log in to record maintenance."}
+              </p>
+              {isTechnician ? (
+                <Link
+                  to={createRecordPath}
+                  className={buttonClasses("primary", "md", "whitespace-nowrap")}
+                >
+                  Add Service Record
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  state={{ from: createRecordPath }}
+                  className={buttonClasses("primary", "md", "whitespace-nowrap")}
+                >
+                  Log in to add a record
+                </Link>
+              )}
+            </Card>
+          </section>
+        )}
 
         {/* Records saved on this device but not uploaded yet */}
         {pendingForAsset.length > 0 && (
@@ -365,6 +396,67 @@ export function PassportPage() {
         </section>
       </main>
     </div>
+  );
+}
+
+/**
+ * The passport is public and sits outside AppLayout, so it carries its own
+ * way back into the app. A cold QR entry has no in-app history: signed-in
+ * users then go back to the dashboard, and signed-out visitors get no Back.
+ */
+function PassportHeader({
+  isSignedIn,
+  returnPath,
+}: {
+  isSignedIn: boolean;
+  /** Where "Sign in" returns to after login. */
+  returnPath: string;
+}) {
+  const brandClasses =
+    "text-xl sm:text-2xl font-bold tracking-tight text-accent-400";
+  const actionClasses =
+    "shrink-0 inline-flex items-center gap-2 h-11 px-3 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-900";
+
+  return (
+    <header className="bg-primary-900 text-white py-4 px-4 shadow-md">
+      <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <BackButton fallback={isSignedIn ? "/dashboard" : null} tone="dark" />
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+            {isSignedIn ? (
+              <Link
+                to="/dashboard"
+                className={`${brandClasses} rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400`}
+              >
+                AirTracer
+              </Link>
+            ) : (
+              <span className={brandClasses}>AirTracer</span>
+            )}
+            <span className="text-xs sm:text-sm font-medium text-primary-300 bg-primary-800 px-2 py-1 rounded whitespace-nowrap">
+              Digital Passport
+            </span>
+          </div>
+        </div>
+        {isSignedIn ? (
+          <Link
+            to="/dashboard"
+            className={`${actionClasses} text-primary-100 hover:bg-primary-800`}
+          >
+            <PiHouseBold className="w-5 h-5" aria-hidden="true" />
+            <span className="sr-only sm:not-sr-only">Dashboard</span>
+          </Link>
+        ) : (
+          <Link
+            to="/login"
+            state={{ from: returnPath }}
+            className={`${actionClasses} text-accent-400 hover:bg-primary-800 hover:text-accent-300`}
+          >
+            Sign in
+          </Link>
+        )}
+      </div>
+    </header>
   );
 }
 

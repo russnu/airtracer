@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { ApiClientError } from '../../lib/api-client';
+import { getReturnPath } from '../../lib/navigation';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
@@ -20,9 +21,12 @@ export function RegisterPage() {
   
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Passed on from the login page when the user was sent there from another page.
+  const returnPath = getReturnPath(location.state);
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={returnPath} replace />;
   }
 
   const validateForm = () => {
@@ -53,7 +57,7 @@ export function RegisterPage() {
         phoneNumber: phoneNumber || undefined,
         role,
       });
-      navigate('/dashboard', { replace: true });
+      navigate(returnPath, { replace: true });
     } catch (err) {
       if (err instanceof ApiClientError) {
         if (err.statusCode === 409) {
@@ -82,7 +86,7 @@ export function RegisterPage() {
         </h2>
         <p className="mt-2 text-center text-sm text-primary-600">
           Already have an account?{' '}
-          <Link to="/auth/login" className="font-medium text-accent-600 hover:text-accent-700">
+          <Link to="/login" state={location.state} className="font-medium text-accent-600 hover:text-accent-700">
             Sign in here
           </Link>
         </p>

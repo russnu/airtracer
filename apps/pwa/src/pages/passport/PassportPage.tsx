@@ -454,8 +454,7 @@ function PassportHeader({
   /** Where "Sign in" returns to after login. */
   returnPath: string;
 }) {
-  const brandClasses =
-    "text-xl sm:text-2xl font-bold tracking-tight text-accent-400";
+  const brandClasses = "text-xl font-black";
   const actionClasses =
     "shrink-0 inline-flex items-center gap-2 h-11 px-3 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-primary-900";
 
@@ -468,12 +467,22 @@ function PassportHeader({
             {isSignedIn ? (
               <Link
                 to="/dashboard"
-                className={`${brandClasses} rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400`}
+                className={`${brandClasses} rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 flex gap-1.5 items-center`}
               >
-                AirTracer
+                <img src="/logo.svg" alt="" className="h-9 w-auto" />
+                <span>
+                  <span className="text-brand-primary">Air</span>
+                  <span className="text-brand-secondary">Tracer</span>
+                </span>
               </Link>
             ) : (
-              <span className={brandClasses}>AirTracer</span>
+              <div className={`${brandClasses} flex gap-1.5 items-center`}>
+                <img src="/logo.svg" alt="" className="h-9 w-auto" />
+                <span>
+                  <span className="text-brand-primary">Air</span>
+                  <span className="text-brand-secondary">Tracer</span>
+                </span>
+              </div>
             )}
             <span className="text-xs sm:text-sm font-medium text-primary-300 bg-primary-800 px-2 py-1 rounded whitespace-nowrap">
               Digital Passport

@@ -9,6 +9,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { QrService } from './qr.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { StorageService } from '../storage/storage.service';
 
 import { Event } from '../../generated/prisma/client';
 
@@ -39,6 +40,10 @@ describe('QrService', () => {
 
   const configServiceMock = {
     getOrThrow: jest.fn(),
+  };
+
+  const storageServiceMock = {
+    getUrl: jest.fn(),
   };
 
   const txMock = {
@@ -108,6 +113,10 @@ describe('QrService', () => {
         {
           provide: ConfigService,
           useValue: configServiceMock,
+        },
+        {
+          provide: StorageService,
+          useValue: storageServiceMock,
         },
       ],
     }).compile();
@@ -264,6 +273,7 @@ describe('QrService', () => {
 
   describe('getPublicPassport', () => {
     const serviceDate = new Date('2026-02-01T10:00:00.000Z');
+    const voidedAt = new Date('2026-02-02T10:00:00.000Z');
 
     const passportQrCode = {
       ...qrCode,
@@ -280,6 +290,9 @@ describe('QrService', () => {
             serviceDate,
             serviceType: 'Preventive Maintenance',
             description: 'Routine maintenance',
+            outcome: 'RESOLVED',
+            voidedAt,
+            voidReason: 'Recorded on the wrong unit.',
             suctionPressure: 120,
             dischargePressure: 300,
             current: 5.5,
@@ -340,6 +353,10 @@ describe('QrService', () => {
             serviceDate,
             serviceType: 'Preventive Maintenance',
             description: 'Routine maintenance',
+            // Voided records stay in the public history, labelled.
+            outcome: 'RESOLVED',
+            voidedAt,
+            voidReason: 'Recorded on the wrong unit.',
             measurements: {
               suctionPressure: 120,
               dischargePressure: 300,
@@ -351,6 +368,7 @@ describe('QrService', () => {
             technician: {
               name: 'John Technician',
             },
+            photos: [],
           },
         ],
       });

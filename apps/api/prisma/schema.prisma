@@ -22,6 +22,9 @@ enum Event {
 
   // Service Record
   SERVICE_RECORD_CREATED
+  SERVICE_RECORD_VOIDED
+  // Legacy: written by the removed status workflow. No longer emitted, but
+  // kept because existing hash-chained audit entries use them.
   SERVICE_RECORD_UPDATED
   SERVICE_RECORD_COMPLETED
   SERVICE_RECORD_CANCELLED
@@ -36,11 +39,11 @@ enum Event {
   SERVICE_PHOTO_REMOVED
 }
 
-enum ServiceStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+// The result of a service visit, recorded when the record is created.
+enum ServiceOutcome {
+  RESOLVED
+  FOLLOW_UP_NEEDED
+  UNABLE_TO_COMPLETE
 }
 
 //==========================================================================//
@@ -222,7 +225,12 @@ model ServiceRecord {
   serviceDate DateTime
   serviceType String
   description String?
-  status      ServiceStatus @default(PENDING)
+  // Required for new records; null only on records created before outcomes.
+  outcome     ServiceOutcome?
+
+  // Voiding is one-way: a voided record stays in the history, labelled.
+  voidedAt   DateTime?
+  voidReason String?
 
   // Operating Measurements
   suctionPressure   Float?

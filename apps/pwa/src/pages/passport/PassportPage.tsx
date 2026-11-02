@@ -34,6 +34,12 @@ import {
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
+import { Badge } from "../../components/ui/Badge";
+import {
+  serviceRecordState,
+  serviceRecordStateBadgeVariant,
+  serviceRecordStateLabel,
+} from "../../components/service-records/serviceOutcome";
 
 export function PassportPage() {
   const { token } = useParams<{ token: string }>();
@@ -381,6 +387,7 @@ export function PassportPage() {
 
           <ServiceTimeline
             records={serviceHistory}
+            getState={serviceRecordState}
             emptyState={
               <Card className="p-8 text-center text-primary-500">
                 No service records found for this equipment.
@@ -477,13 +484,46 @@ function ServiceRecordItem({
       m.voltage !== null ||
       m.returnAirTemp !== null ||
       m.supplyAirTemp !== null);
+  const state = serviceRecordState(record);
+  const isVoided = state === "VOIDED";
 
   return (
-    <Card padding="none" className="overflow-hidden">
+    <Card
+      padding="none"
+      className={`overflow-hidden ${isVoided ? "opacity-75" : ""}`}
+    >
       <div className="p-4 sm:p-5 border-b border-primary-100 bg-white">
-        <h3 className="text-base font-semibold text-brand-tertiary break-words">
-          {record.serviceType}
-        </h3>
+        <div className="flex flex-wrap justify-between items-start gap-2">
+          <h3
+            className={`text-base font-semibold text-brand-tertiary break-words ${
+              isVoided ? "line-through" : ""
+            }`}
+          >
+            {record.serviceType}
+          </h3>
+          <Badge
+            variant={serviceRecordStateBadgeVariant(state)}
+            className="shrink-0"
+          >
+            {serviceRecordStateLabel(state)}
+          </Badge>
+        </div>
+
+        {isVoided && (
+          <div className="mt-3 p-3 rounded-lg border border-primary-200 bg-primary-50 text-sm text-primary-700">
+            <p className="font-medium">
+              Voided on {new Date(record.voidedAt!).toLocaleDateString()}
+            </p>
+            <p className="mt-1 whitespace-pre-wrap">
+              {record.voidReason ?? "No reason recorded."}
+            </p>
+            {record.outcome && (
+              <p className="mt-1 text-xs text-primary-500">
+                Recorded outcome: {serviceRecordStateLabel(record.outcome)}
+              </p>
+            )}
+          </div>
+        )}
 
         {record.description && (
           <p className="text-sm text-primary-700 mt-3 whitespace-pre-wrap">

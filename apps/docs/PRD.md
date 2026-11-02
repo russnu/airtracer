@@ -117,7 +117,7 @@ Unless explicitly approved as a later requirement, do not implement:
 - Payment processing, technician marketplaces, or service booking.
 - GPS tracking or continuous technician location monitoring.
 - A native Android or iOS application separate from the PWA.
-- Guaranteed full offline operation with automatic synchronization of every type of data. Only the offline workflows listed in §3.1 are in scope; editing records, status changes, photo uploads, and owner or administrative actions require a connection.
+- Guaranteed full offline operation with automatic synchronization of every type of data. Only the offline workflows listed in §3.1 are in scope; editing records, voiding records, photo uploads, and owner or administrative actions require a connection.
 - Features that have no support in the PRD or explicit development instructions.
 
 Measurements are entered manually by users. They must not be represented as automatically collected sensor readings.
@@ -220,6 +220,8 @@ QR possession must not automatically grant unrestricted access to private owner 
 
 Publicly accessible passport information, if supported by the backend, must be limited to explicitly approved fields. Authenticated or sensitive information must remain protected.
 
+A service record's outcome and void details (date and reason) are approved public passport fields.
+
 ### 4.4 Service Records
 
 **FR-019 — Create Service Record**
@@ -235,6 +237,7 @@ A service record should support the fields available in the backend model, inclu
 - Service date.
 - Service type.
 - Description of work performed.
+- Service outcome: resolved, follow-up needed, or unable to complete. Required, and set when the record is created.
 - Diagnostic measurements.
 - Findings.
 - Recommendations.
@@ -262,7 +265,7 @@ Service records must be associated with the correct asset and authenticated tech
 
 **FR-025 — Record Modification**
 
-Support only the service-record editing, status updates, and deletion operations actually defined by the approved requirements and backend API. Do not assume that existing service records are editable or deletable.
+Service records are append-only and cannot be edited or deleted. The only change is voiding: the technician who created a record may void it with a reason. Voiding is one-way, and a voided record stays in the service history and on the passport, labelled as voided. A record with wrong details is voided and a correct record is created.
 
 ### 4.5 Photo Evidence
 
@@ -543,7 +546,7 @@ The PWA supports appropriate resource caching and graceful handling of connectiv
 - An expired session must be renewed by signing in before records can sync.
 - The device-reported capture time is recorded in the audit log for information; the server does not trust the device clock.
 
-Photo uploads, record edits, status changes, and other write operations remain online-only. Do not extend the offline queue to them without an approved requirement.
+Photo uploads, record edits, voiding records, and other write operations remain online-only. Do not extend the offline queue to them without an approved requirement.
 
 ### 8.4 Dependencies
 

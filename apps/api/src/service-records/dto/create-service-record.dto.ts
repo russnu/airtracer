@@ -5,7 +5,9 @@ import {
   IsString,
   IsNumber,
   IsUUID,
+  IsEnum,
 } from 'class-validator';
+import { ServiceOutcome } from '../../../generated/prisma/enums';
 export class CreateServiceRecordDto {
   // Client-generated idempotency key: repeating a create with the same key
   // returns the record that was already stored instead of a duplicate.
@@ -29,6 +31,9 @@ export class CreateServiceRecordDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsEnum(ServiceOutcome)
+  outcome!: ServiceOutcome;
 
   @IsOptional()
   @IsNumber()

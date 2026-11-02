@@ -1,4 +1,4 @@
-import { PrismaClient, ServiceStatus } from '../../generated/prisma/client';
+import { PrismaClient, ServiceOutcome } from '../../generated/prisma/client';
 
 export async function seedServiceRecords(prisma: PrismaClient) {
   const technician = await prisma.user.findUniqueOrThrow({
@@ -32,7 +32,7 @@ export async function seedServiceRecords(prisma: PrismaClient) {
 
       serviceDate: new Date('2025-07-15'),
       serviceType: 'Preventive Maintenance',
-      status: ServiceStatus.COMPLETED,
+      outcome: ServiceOutcome.RESOLVED,
 
       description:
         'Routine preventive maintenance including cleaning, inspection, and performance testing.',
@@ -58,7 +58,7 @@ export async function seedServiceRecords(prisma: PrismaClient) {
 
       serviceDate: new Date('2025-08-20'),
       serviceType: 'Inspection',
-      status: ServiceStatus.COMPLETED,
+      outcome: ServiceOutcome.FOLLOW_UP_NEEDED,
 
       description:
         'General inspection and operational testing of the air-conditioning unit.',
@@ -84,7 +84,7 @@ export async function seedServiceRecords(prisma: PrismaClient) {
 
       serviceDate: new Date('2025-09-10'),
       serviceType: 'Repair',
-      status: ServiceStatus.COMPLETED,
+      outcome: ServiceOutcome.RESOLVED,
 
       description:
         'Diagnostic inspection and repair following reported cooling performance issues.',
@@ -103,6 +103,21 @@ export async function seedServiceRecords(prisma: PrismaClient) {
 
       recommendations:
         'Replace or clean the air filter and monitor cooling performance after service.',
+    },
+    {
+      // A voided record: it stays in the history, labelled as voided.
+      assetId: daikin.id,
+      technicianId: technician.id,
+
+      serviceDate: new Date('2025-07-14'),
+      serviceType: 'Inspection',
+      outcome: ServiceOutcome.UNABLE_TO_COMPLETE,
+
+      description: 'Visit logged against the wrong unit.',
+
+      voidedAt: new Date('2025-07-15T08:00:00Z'),
+      voidReason:
+        'Recorded on the wrong unit; the inspection was for a different system.',
     },
   ];
 

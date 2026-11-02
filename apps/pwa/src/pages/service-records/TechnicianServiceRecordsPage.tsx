@@ -5,7 +5,7 @@ import { PiImageBold, PiMapPinBold, PiQrCodeBold } from "react-icons/pi";
 import { isNetworkError, serviceRecordsApi } from "../../lib/api-client";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOutbox } from "../../hooks/useOutbox";
-import type { ServiceStatus, TechnicianServiceRecord } from "../../types/api";
+import type { TechnicianServiceRecord } from "../../types/api";
 import {
   Alert,
   Badge,
@@ -18,13 +18,15 @@ import {
 } from "../../components/ui";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 import {
-  SERVICE_STATUSES,
-  serviceStatusBadgeVariant,
-  serviceStatusLabel,
-  serviceStatusStyles,
-} from "../../components/service-records/serviceStatus";
+  SERVICE_OUTCOMES,
+  serviceRecordState,
+  serviceRecordStateBadgeVariant,
+  serviceRecordStateLabel,
+  serviceRecordStateStyles,
+  type ServiceRecordState,
+} from "../../components/service-records/serviceOutcome";
 
-type StatusFilter = ServiceStatus | "ALL";
+type StatusFilter = ServiceRecordState | "ALL";
 
 function matchesSearch(record: TechnicianServiceRecord, query: string) {
   if (!query) return true;
@@ -63,12 +65,24 @@ export function TechnicianServiceRecordsPage() {
   const visible =
     statusFilter === "ALL"
       ? searched
-      : searched.filter((record) => record.status === statusFilter);
+      : searched.filter((record) => serviceRecordState(record) === statusFilter);
 
   const countFor = (status: StatusFilter) =>
     status === "ALL"
       ? searched.length
-      : searched.filter((record) => record.status === status).length;
+      : searched.filter((record) => serviceRecordState(record) === status)
+          .length;
+
+  // "Outcome not recorded" only applies to older records, so its chip is
+  // shown only while some exist.
+  const filters: StatusFilter[] = [
+    "ALL",
+    ...SERVICE_OUTCOMES,
+    ...(records.some((r) => serviceRecordState(r) === "NOT_RECORDED")
+      ? (["NOT_RECORDED"] as const)
+      : []),
+    "VOIDED",
+  ];
 
   const unsynced = outboxItems.filter((item) => item.status !== "synced");
   const isFiltered = query !== "" || statusFilter !== "ALL";
@@ -142,10 +156,10 @@ export function TechnicianServiceRecordsPage() {
         />
         <div
           role="group"
-          aria-label="Filter by status"
+          aria-label="Filter by outcome"
           className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {(["ALL", ...SERVICE_STATUSES] as StatusFilter[]).map((status) => {
+          {filters.map((status) => {
             const isActive = statusFilter === status;
             return (
               <button
@@ -161,11 +175,11 @@ export function TechnicianServiceRecordsPage() {
               >
                 {status !== "ALL" && (
                   <span
-                    className={`h-2.5 w-2.5 rounded-full ${serviceStatusStyles[status].node}`}
+                    className={`h-2.5 w-2.5 rounded-full ${serviceRecordStateStyles[status].node}`}
                     aria-hidden="true"
                   />
                 )}
-                {status === "ALL" ? "All" : serviceStatusLabel(status)}
+                {status === "ALL" ? "All" : serviceRecordStateLabel(status)}
                 <span
                   className={`text-xs ${isActive ? "text-accent-100" : "text-primary-400"}`}
                 >
@@ -196,12 +210,12 @@ export function TechnicianServiceRecordsPage() {
           <Card padding="sm" className="sm:p-6">
             <ServiceTimeline
               records={visible}
-              getStatus={(record) => record.status}
+              getState={serviceRecordState}
               emptyState={
                 isFiltered ? (
                   <EmptyState
                     title="No matching records"
-                    description="Try a different search or status."
+                    description="Try a different search or outcome."
                     action={
                       <Button
                         variant="outline"
@@ -240,6 +254,7 @@ export function TechnicianServiceRecordsPage() {
 
 function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
   const { asset } = record;
+  const state = serviceRecordState(record);
   return (
     <Link to={`/service-records/${record.id}`} className="block group">
       <div className="border border-primary-200 rounded-lg p-4 bg-white hover:border-accent-500 transition-colors">
@@ -248,10 +263,10 @@ function ServiceRecordCard({ record }: { record: TechnicianServiceRecord }) {
             {record.serviceType}
           </p>
           <Badge
-            variant={serviceStatusBadgeVariant(record.status)}
+            variant={serviceRecordStateBadgeVariant(state)}
             className="shrink-0"
           >
-            {serviceStatusLabel(record.status)}
+            {serviceRecordStateLabel(state)}
           </Badge>
         </div>
         <p className="text-sm font-medium text-primary-700 mt-1 break-words">

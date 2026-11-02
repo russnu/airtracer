@@ -19,9 +19,9 @@ const assetSummarySelect = {
 };
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { Event, ServiceStatus } from '../../generated/prisma/enums';
+import { Event, ServiceOutcome } from '../../generated/prisma/enums';
 import { CreateServiceRecordDto } from './dto/create-service-record.dto';
-import { UpdateServiceRecordStatusDto } from './dto/update-service-record-status.dto';
+import { VoidServiceRecordDto } from './dto/void-service-record.dto';
 
 describe('ServiceRecordsService', () => {
   let service: ServiceRecordsService;
@@ -76,7 +76,9 @@ describe('ServiceRecordsService', () => {
     serviceDate: new Date('2026-08-20T00:00:00.000Z'),
     serviceType: 'Preventive Maintenance',
     description: 'Routine maintenance',
-    status: ServiceStatus.PENDING,
+    outcome: ServiceOutcome.RESOLVED as ServiceOutcome | null,
+    voidedAt: null as Date | null,
+    voidReason: null as string | null,
     suctionPressure: 70,
     dischargePressure: 250,
     current: 5.2,
@@ -123,6 +125,7 @@ describe('ServiceRecordsService', () => {
       serviceDate: '2026-08-20T00:00:00.000Z',
       serviceType: 'Preventive Maintenance',
       description: 'Routine maintenance',
+      outcome: ServiceOutcome.RESOLVED,
       suctionPressure: 70,
       dischargePressure: 250,
       current: 5.2,
@@ -153,6 +156,7 @@ describe('ServiceRecordsService', () => {
           serviceDate: new Date(createDto.serviceDate),
           serviceType: createDto.serviceType,
           description: createDto.description,
+          outcome: createDto.outcome,
           suctionPressure: createDto.suctionPressure,
           dischargePressure: createDto.dischargePressure,
           current: createDto.current,
@@ -174,7 +178,7 @@ describe('ServiceRecordsService', () => {
             serviceDate: serviceRecord.serviceDate.toISOString(),
             serviceType: serviceRecord.serviceType,
             description: serviceRecord.description,
-            status: serviceRecord.status,
+            outcome: serviceRecord.outcome,
             suctionPressure: serviceRecord.suctionPressure,
             dischargePressure: serviceRecord.dischargePressure,
             current: serviceRecord.current,
@@ -432,86 +436,25 @@ describe('ServiceRecordsService', () => {
   });
 
   //==========================================================================//
-  // updateStatus
+  // voidRecord
   //==========================================================================//
 
-  describe('updateStatus', () => {
-    it('should update the status to COMPLETED and create a completion audit log', async () => {
-      const dto: UpdateServiceRecordStatusDto = {
-        status: ServiceStatus.COMPLETED,
-      };
+  describe('voidRecord', () => {
+    const dto: VoidServiceRecordDto = {
+      reason: 'Recorded on the wrong unit.',
+    };
 
-      const inProgressRecord = {
+    it('should void the record and create a voided audit log', async () => {
+      const voidedRecord = {
         ...serviceRecord,
-        status: ServiceStatus.IN_PROGRESS,
-      };
-
-      const updatedRecord = {
-        ...serviceRecord,
-        status: ServiceStatus.COMPLETED,
-      };
-
-      prismaMock.serviceRecord.findUnique.mockResolvedValue(inProgressRecord);
-
-      txMock.serviceRecord.update.mockResolvedValue(updatedRecord);
-
-      const result = await service.updateStatus(
-        serviceRecordId,
-        technicianId,
-        dto,
-      );
-
-      expect(prismaMock.serviceRecord.findUnique).toHaveBeenCalledWith({
-        where: {
-          id: serviceRecordId,
-        },
-      });
-
-      expect(txMock.serviceRecord.update).toHaveBeenCalledWith({
-        where: {
-          id: serviceRecordId,
-        },
-        data: {
-          status: ServiceStatus.COMPLETED,
-        },
-      });
-
-      expect(auditServiceMock.log).toHaveBeenCalledWith(
-        {
-          actorId: technicianId,
-          assetId: serviceRecord.assetId,
-          event: Event.SERVICE_RECORD_COMPLETED,
-          payload: {
-            serviceRecordId: serviceRecord.id,
-            changes: {
-              status: {
-                from: ServiceStatus.IN_PROGRESS,
-                to: ServiceStatus.COMPLETED,
-              },
-            },
-          },
-        },
-        txMock,
-      );
-
-      expect(result).toEqual(updatedRecord);
-    });
-
-    it('should update the status to CANCELLED and create a cancellation audit log', async () => {
-      const dto: UpdateServiceRecordStatusDto = {
-        status: ServiceStatus.CANCELLED,
-      };
-
-      const updatedRecord = {
-        ...serviceRecord,
-        status: ServiceStatus.CANCELLED,
+        voidedAt: new Date(),
+        voidReason: dto.reason,
       };
 
       prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
+      txMock.serviceRecord.update.mockResolvedValue(voidedRecord);
 
-      txMock.serviceRecord.update.mockResolvedValue(updatedRecord);
-
-      const result = await service.updateStatus(
+      const result = await service.voidRecord(
         serviceRecordId,
         technicianId,
         dto,
@@ -520,133 +463,79 @@ describe('ServiceRecordsService', () => {
       expect(txMock.serviceRecord.update).toHaveBeenCalledWith({
         where: {
           id: serviceRecordId,
+          voidedAt: null,
         },
         data: {
-          status: ServiceStatus.CANCELLED,
+          voidedAt: expect.any(Date),
+          voidReason: dto.reason,
         },
       });
 
       expect(auditServiceMock.log).toHaveBeenCalledWith(
         {
           actorId: technicianId,
-          assetId: serviceRecord.assetId,
-          event: Event.SERVICE_RECORD_CANCELLED,
+          assetId,
+          event: Event.SERVICE_RECORD_VOIDED,
           payload: {
-            serviceRecordId: serviceRecord.id,
-            changes: {
-              status: {
-                from: ServiceStatus.PENDING,
-                to: ServiceStatus.CANCELLED,
-              },
-            },
+            serviceRecordId,
+            reason: dto.reason,
           },
         },
         txMock,
       );
 
-      expect(result).toEqual(updatedRecord);
+      expect(result).toEqual(voidedRecord);
     });
 
-    it('should use SERVICE_RECORD_UPDATED for other status changes', async () => {
-      const dto: UpdateServiceRecordStatusDto = {
-        status: ServiceStatus.IN_PROGRESS,
-      };
-
-      const updatedRecord = {
-        ...serviceRecord,
-        status: ServiceStatus.IN_PROGRESS,
-      };
-
-      prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
-
-      txMock.serviceRecord.update.mockResolvedValue(updatedRecord);
-
-      await service.updateStatus(serviceRecordId, technicianId, dto);
-
-      expect(auditServiceMock.log).toHaveBeenCalledWith(
-        {
-          actorId: technicianId,
-          assetId: serviceRecord.assetId,
-          event: Event.SERVICE_RECORD_UPDATED,
-          payload: {
-            serviceRecordId: serviceRecord.id,
-            changes: {
-              status: {
-                from: ServiceStatus.PENDING,
-                to: ServiceStatus.IN_PROGRESS,
-              },
-            },
-          },
-        },
-        txMock,
-      );
-    });
-
-    it('should throw NotFoundException when the service record does not exist', async () => {
-      const dto: UpdateServiceRecordStatusDto = {
-        status: ServiceStatus.COMPLETED,
-      };
-
+    it('should throw NotFoundException when the record does not exist', async () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateStatus(serviceRecordId, technicianId, dto),
-      ).rejects.toThrow(new NotFoundException('Service record not found'));
+        service.voidRecord(serviceRecordId, technicianId, dto),
+      ).rejects.toThrow(NotFoundException);
 
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
-      expect(auditServiceMock.log).not.toHaveBeenCalled();
     });
 
-    it('should reject a status change by a technician who did not create the record', async () => {
+    it('should throw ForbiddenException for another technician', async () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
 
       await expect(
-        service.updateStatus(serviceRecordId, 'technician-2', {
-          status: ServiceStatus.IN_PROGRESS,
-        }),
+        service.voidRecord(serviceRecordId, 'technician-2', dto),
       ).rejects.toThrow(ForbiddenException);
 
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
       expect(auditServiceMock.log).not.toHaveBeenCalled();
     });
 
-    it.each([
-      [ServiceStatus.PENDING, ServiceStatus.COMPLETED],
-      [ServiceStatus.IN_PROGRESS, ServiceStatus.PENDING],
-      [ServiceStatus.COMPLETED, ServiceStatus.IN_PROGRESS],
-      [ServiceStatus.COMPLETED, ServiceStatus.CANCELLED],
-      [ServiceStatus.CANCELLED, ServiceStatus.PENDING],
-    ])('should reject the transition from %s to %s', async (from, to) => {
+    it('should throw ConflictException when the record is already voided', async () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue({
         ...serviceRecord,
-        status: from,
+        voidedAt: new Date(),
+        voidReason: 'Earlier reason',
       });
 
       await expect(
-        service.updateStatus(serviceRecordId, technicianId, { status: to }),
-      ).rejects.toThrow(BadRequestException);
+        service.voidRecord(serviceRecordId, technicianId, dto),
+      ).rejects.toThrow(ConflictException);
 
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
       expect(auditServiceMock.log).not.toHaveBeenCalled();
     });
 
-    it('should not update or create an audit log when the status is unchanged', async () => {
-      const dto: UpdateServiceRecordStatusDto = {
-        status: ServiceStatus.PENDING,
-      };
-
+    it('should throw ConflictException when a concurrent request voided it first', async () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue(serviceRecord);
-
-      const result = await service.updateStatus(
-        serviceRecordId,
-        technicianId,
-        dto,
+      txMock.serviceRecord.update.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Record not found', {
+          code: 'P2025',
+          clientVersion: 'test',
+        }),
       );
 
-      expect(result).toEqual(serviceRecord);
+      await expect(
+        service.voidRecord(serviceRecordId, technicianId, dto),
+      ).rejects.toThrow(ConflictException);
 
-      expect(prismaMock.$transaction).not.toHaveBeenCalled();
-      expect(txMock.serviceRecord.update).not.toHaveBeenCalled();
       expect(auditServiceMock.log).not.toHaveBeenCalled();
     });
   });

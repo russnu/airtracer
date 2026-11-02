@@ -9,23 +9,8 @@ import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateServiceRecordDto } from './dto/create-service-record.dto';
 import { AuditService } from '../audit/audit.service';
-import { Event, ServiceStatus } from '../../generated/prisma/enums';
-import { UpdateServiceRecordStatusDto } from './dto/update-service-record-status.dto';
-
-// PENDING -> IN_PROGRESS -> COMPLETED, with CANCELLED reachable from either
-// open status. COMPLETED and CANCELLED are final.
-export const ALLOWED_STATUS_TRANSITIONS: Record<
-  ServiceStatus,
-  readonly ServiceStatus[]
-> = {
-  [ServiceStatus.PENDING]: [ServiceStatus.IN_PROGRESS, ServiceStatus.CANCELLED],
-  [ServiceStatus.IN_PROGRESS]: [
-    ServiceStatus.COMPLETED,
-    ServiceStatus.CANCELLED,
-  ],
-  [ServiceStatus.COMPLETED]: [],
-  [ServiceStatus.CANCELLED]: [],
-};
+import { Event } from '../../generated/prisma/enums';
+import { VoidServiceRecordDto } from './dto/void-service-record.dto';
 
 const assetSummarySelect = {
   id: true,
@@ -149,6 +134,7 @@ export class ServiceRecordsService {
           serviceDate: new Date(dto.serviceDate),
           serviceType: dto.serviceType,
           description: dto.description,
+          outcome: dto.outcome,
           suctionPressure: dto.suctionPressure,
           dischargePressure: dto.dischargePressure,
           current: dto.current,
@@ -170,7 +156,7 @@ export class ServiceRecordsService {
             serviceDate: serviceRecord.serviceDate.toISOString(),
             serviceType: serviceRecord.serviceType,
             description: serviceRecord.description,
-            status: serviceRecord.status,
+            outcome: serviceRecord.outcome,
             suctionPressure: serviceRecord.suctionPressure,
             dischargePressure: serviceRecord.dischargePressure,
             current: serviceRecord.current,
@@ -236,10 +222,12 @@ export class ServiceRecordsService {
     });
   }
   //-------------------------------------------------------------//
-  async updateStatus(
+  // Records are append-only, so voiding is the only change: the record stays
+  // in the history, labelled as voided, and cannot be restored.
+  async voidRecord(
     id: string,
     technicianId: string,
-    dto: UpdateServiceRecordStatusDto,
+    dto: VoidServiceRecordDto,
   ) {
     const serviceRecord = await this.prisma.serviceRecord.findUnique({
       where: {
@@ -253,67 +241,52 @@ export class ServiceRecordsService {
 
     if (serviceRecord.technicianId !== technicianId) {
       throw new ForbiddenException(
-        'Only the technician who created this service record can change its status.',
+        'Only the technician who created this service record can void it.',
       );
     }
 
-    // Don't create an audit event if the status is unchanged.
-    if (serviceRecord.status === dto.status) {
-      return serviceRecord;
+    if (serviceRecord.voidedAt) {
+      throw new ConflictException('This service record is already voided.');
     }
 
-    if (
-      !ALLOWED_STATUS_TRANSITIONS[serviceRecord.status].includes(dto.status)
-    ) {
-      throw new BadRequestException(
-        `Cannot change status from ${serviceRecord.status} to ${dto.status}.`,
-      );
-    }
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Matches only while the record is still unvoided, so of two
+        // concurrent requests only one succeeds.
+        const voidedRecord = await tx.serviceRecord.update({
+          where: {
+            id,
+            voidedAt: null,
+          },
+          data: {
+            voidedAt: new Date(),
+            voidReason: dto.reason,
+          },
+        });
 
-    return this.prisma.$transaction(async (tx) => {
-      const updatedRecord = await tx.serviceRecord.update({
-        where: {
-          id,
-        },
-        data: {
-          status: dto.status,
-        },
-      });
-
-      let event: Event;
-
-      switch (dto.status) {
-        case ServiceStatus.COMPLETED:
-          event = Event.SERVICE_RECORD_COMPLETED;
-          break;
-
-        case ServiceStatus.CANCELLED:
-          event = Event.SERVICE_RECORD_CANCELLED;
-          break;
-
-        default:
-          event = Event.SERVICE_RECORD_UPDATED;
-      }
-
-      await this.auditService.log(
-        {
-          actorId: technicianId,
-          assetId: serviceRecord.assetId,
-          event,
-          payload: {
-            serviceRecordId: serviceRecord.id,
-            changes: {
-              status: {
-                from: serviceRecord.status,
-                to: updatedRecord.status,
-              },
+        await this.auditService.log(
+          {
+            actorId: technicianId,
+            assetId: serviceRecord.assetId,
+            event: Event.SERVICE_RECORD_VOIDED,
+            payload: {
+              serviceRecordId: serviceRecord.id,
+              reason: dto.reason,
             },
           },
-        },
-        tx,
-      );
+          tx,
+        );
 
-      return updatedRecord;
-    });
+        return voidedRecord;
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new ConflictException('This service record is already voided.');
+      }
+      throw error;
+    }
   }
 }

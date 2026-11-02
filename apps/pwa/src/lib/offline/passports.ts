@@ -177,6 +177,10 @@ export function savedToPublicHistory(
     serviceDate: record.serviceDate,
     serviceType: record.serviceType,
     description: record.description,
+    // Copies saved before outcomes existed lack these until refreshed.
+    outcome: record.outcome ?? null,
+    voidedAt: record.voidedAt ?? null,
+    voidReason: record.voidReason ?? null,
     measurements: record.measurements,
     findings: record.findings,
     recommendations: record.recommendations,

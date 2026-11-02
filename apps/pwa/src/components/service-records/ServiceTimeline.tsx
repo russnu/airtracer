@@ -1,20 +1,22 @@
 import type { ReactNode } from "react";
-import type { ServiceStatus } from "../../types/api";
 import { EmptyState } from "../ui/EmptyState";
-import { serviceStatusStyles } from "./serviceStatus";
+import {
+  serviceRecordStateStyles,
+  type ServiceRecordState,
+} from "./serviceOutcome";
 
 interface ServiceTimelineProps<T extends { id: string; serviceDate: string }> {
   records: T[];
   renderRecord: (record: T) => ReactNode;
-  /** Records without a status (e.g. public passport history) get a neutral node. */
-  getStatus?: (record: T) => ServiceStatus | undefined;
+  /** Records without a state get a neutral node. */
+  getState?: (record: T) => ServiceRecordState | undefined;
   emptyState?: ReactNode;
 }
 
 export function ServiceTimeline<T extends { id: string; serviceDate: string }>({
   records,
   renderRecord,
-  getStatus,
+  getState,
   emptyState,
 }: ServiceTimelineProps<T>) {
   if (records.length === 0) {
@@ -41,8 +43,8 @@ export function ServiceTimeline<T extends { id: string; serviceDate: string }>({
       {sorted.map((record, index) => {
         const isLast = index === sorted.length - 1;
         const date = new Date(record.serviceDate);
-        const status = getStatus?.(record);
-        const style = status ? serviceStatusStyles[status] : undefined;
+        const state = getState?.(record);
+        const style = state ? serviceRecordStateStyles[state] : undefined;
 
         return (
           <li key={record.id} className="flex gap-3 sm:gap-4">

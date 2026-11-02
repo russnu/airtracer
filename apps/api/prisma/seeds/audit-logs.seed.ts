@@ -116,18 +116,19 @@ export async function seedAuditLogs(prisma: PrismaClient) {
       serviceType: 'Preventive Maintenance',
       serviceDate: '2025-04-15T09:00:00Z',
       description: 'Routine preventive maintenance',
+      outcome: 'RESOLVED',
     },
     new Date('2025-04-15T09:00:00Z'),
   );
 
   await createAuditLog(
     daikin.id,
-    Event.SERVICE_RECORD_COMPLETED,
+    Event.SERVICE_RECORD_VOIDED,
     {
-      serviceDate: '2025-04-15T09:00:00Z',
-      status: 'COMPLETED',
+      reason:
+        'Recorded on the wrong unit; the inspection was for a different system.',
     },
-    new Date('2025-04-15T11:00:00Z'),
+    new Date('2025-07-15T08:00:00Z'),
   );
 
   // ==================================================================
@@ -156,18 +157,9 @@ export async function seedAuditLogs(prisma: PrismaClient) {
       serviceType: 'Cleaning',
       serviceDate: '2025-07-10T09:00:00Z',
       description: 'Indoor and outdoor unit cleaning',
+      outcome: 'FOLLOW_UP_NEEDED',
     },
     new Date('2025-07-10T09:00:00Z'),
-  );
-
-  await createAuditLog(
-    panasonic.id,
-    Event.SERVICE_RECORD_COMPLETED,
-    {
-      serviceDate: '2025-07-10T09:00:00Z',
-      status: 'COMPLETED',
-    },
-    new Date('2025-07-10T11:00:00Z'),
   );
 
   // ==================================================================

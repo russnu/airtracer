@@ -12,7 +12,7 @@ import type {
   ServicePhotoWithUrl,
   TechnicianServiceRecord,
   UpdateAssetPayload,
-  UpdateServiceRecordStatusPayload,
+  VoidServiceRecordPayload,
   UserResponse,
 } from '../types/api';
 
@@ -244,11 +244,11 @@ export const serviceRecordsApi = {
     return request(`/assets/${assetId}/service-records`);
   },
 
-  updateStatus(
+  voidRecord(
     id: string,
-    data: UpdateServiceRecordStatusPayload,
+    data: VoidServiceRecordPayload,
   ): Promise<ServiceRecord> {
-    return request(`/service-records/${id}/status`, {
+    return request(`/service-records/${id}/void`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });

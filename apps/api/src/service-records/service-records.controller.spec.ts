@@ -3,8 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ServiceRecordsController } from './service-records.controller';
 import { ServiceRecordsService } from './service-records.service';
 import { CreateServiceRecordDto } from './dto/create-service-record.dto';
-import { UpdateServiceRecordStatusDto } from './dto/update-service-record-status.dto';
-import { ServiceStatus } from '../../generated/prisma/enums';
+import { VoidServiceRecordDto } from './dto/void-service-record.dto';
+import { ServiceOutcome } from '../../generated/prisma/enums';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 
 describe('ServiceRecordsController', () => {
@@ -15,7 +15,7 @@ describe('ServiceRecordsController', () => {
     findOne: jest.fn(),
     findByAsset: jest.fn(),
     findByTechnician: jest.fn(),
-    updateStatus: jest.fn(),
+    voidRecord: jest.fn(),
   };
 
   const assetId = 'asset-1';
@@ -70,6 +70,7 @@ describe('ServiceRecordsController', () => {
       serviceDate: '2026-08-20T00:00:00.000Z',
       serviceType: 'Preventive Maintenance',
       description: 'Routine maintenance',
+      outcome: ServiceOutcome.RESOLVED,
       suctionPressure: 70,
       dischargePressure: 250,
       current: 5.2,
@@ -87,7 +88,7 @@ describe('ServiceRecordsController', () => {
       serviceDate: new Date(dto.serviceDate),
       serviceType: dto.serviceType,
       description: dto.description,
-      status: ServiceStatus.PENDING,
+      outcome: ServiceOutcome.RESOLVED,
       suctionPressure: dto.suctionPressure,
       dischargePressure: dto.dischargePressure,
       current: dto.current,
@@ -146,7 +147,7 @@ describe('ServiceRecordsController', () => {
         serviceDate: new Date('2026-08-20T00:00:00.000Z'),
         serviceType: 'Preventive Maintenance',
         description: 'Routine maintenance',
-        status: ServiceStatus.PENDING,
+        outcome: ServiceOutcome.RESOLVED,
       };
 
       serviceRecordServiceMock.findOne.mockResolvedValue(serviceRecord);
@@ -174,7 +175,7 @@ describe('ServiceRecordsController', () => {
           technicianId,
           serviceDate: new Date('2026-08-20T00:00:00.000Z'),
           serviceType: 'Preventive Maintenance',
-          status: ServiceStatus.PENDING,
+          outcome: ServiceOutcome.RESOLVED,
         },
         {
           id: 'service-record-2',
@@ -182,7 +183,7 @@ describe('ServiceRecordsController', () => {
           technicianId,
           serviceDate: new Date('2026-07-20T00:00:00.000Z'),
           serviceType: 'Repair',
-          status: ServiceStatus.COMPLETED,
+          outcome: ServiceOutcome.FOLLOW_UP_NEEDED,
         },
       ];
 
@@ -199,37 +200,39 @@ describe('ServiceRecordsController', () => {
   });
 
   //==========================================================================//
-  // updateStatus
+  // voidRecord
   //==========================================================================//
 
-  describe('updateStatus', () => {
-    const dto: UpdateServiceRecordStatusDto = {
-      status: ServiceStatus.COMPLETED,
+  describe('voidRecord', () => {
+    const dto: VoidServiceRecordDto = {
+      reason: 'Recorded on the wrong unit.',
     };
 
-    const updatedServiceRecord = {
+    const voidedServiceRecord = {
       id: serviceRecordId,
       assetId,
       technicianId,
       serviceDate: new Date('2026-08-20T00:00:00.000Z'),
       serviceType: 'Preventive Maintenance',
-      status: ServiceStatus.COMPLETED,
+      outcome: ServiceOutcome.FOLLOW_UP_NEEDED,
+      voidedAt: new Date('2026-08-21T00:00:00.000Z'),
+      voidReason: dto.reason,
     };
 
-    it('should update the service record status using the authenticated user ID', async () => {
-      serviceRecordServiceMock.updateStatus.mockResolvedValue(
-        updatedServiceRecord,
+    it('should void the service record using the authenticated user ID', async () => {
+      serviceRecordServiceMock.voidRecord.mockResolvedValue(
+        voidedServiceRecord,
       );
 
-      const result = await controller.updateStatus(serviceRecordId, user, dto);
+      const result = await controller.voidRecord(serviceRecordId, user, dto);
 
-      expect(serviceRecordServiceMock.updateStatus).toHaveBeenCalledWith(
+      expect(serviceRecordServiceMock.voidRecord).toHaveBeenCalledWith(
         serviceRecordId,
         user.id,
         dto,
       );
 
-      expect(result).toEqual(updatedServiceRecord);
+      expect(result).toEqual(voidedServiceRecord);
     });
   });
 });

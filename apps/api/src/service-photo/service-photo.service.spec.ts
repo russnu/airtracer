@@ -210,6 +210,19 @@ describe('ServicePhotoService', () => {
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
 
+    it('should reject an upload to a voided service record', async () => {
+      prismaMock.serviceRecord.findUnique.mockResolvedValue({
+        ...serviceRecord,
+        voidedAt: new Date(),
+      });
+
+      await expect(
+        service.upload(serviceRecordId, userId, uploadedFile, createDto),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(storageServiceMock.save).not.toHaveBeenCalled();
+    });
+
     it('should reject an upload by a technician who did not create the record', async () => {
       prismaMock.serviceRecord.findUnique.mockResolvedValue({
         ...serviceRecord,

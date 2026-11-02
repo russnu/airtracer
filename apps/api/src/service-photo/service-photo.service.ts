@@ -99,6 +99,11 @@ export class ServicePhotoService {
   ) {
     const serviceRecord = await this.getServiceRecord(serviceRecordId);
     this.assertCanAddPhotos(serviceRecord, userId);
+    if (serviceRecord.voidedAt) {
+      throw new BadRequestException(
+        'Photos cannot be added to a voided service record.',
+      );
+    }
     const file = this.validateImage(uploadedFile);
 
     // Store the file

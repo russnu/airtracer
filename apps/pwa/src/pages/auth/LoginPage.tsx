@@ -1,21 +1,25 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { ApiClientError, isNetworkError } from '../../lib/api-client';
-import { useDeviceOutboxCounts } from '../../hooks/useOutbox';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Alert } from '../../components/ui/Alert';
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import { ApiClientError, isNetworkError } from "../../lib/api-client";
+import { getReturnPath } from "../../lib/navigation";
+import { useDeviceOutboxCounts } from "../../hooks/useOutbox";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Alert } from "../../components/ui/Alert";
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // Where the user was sent from, e.g. a passport or a protected page.
+  const returnPath = getReturnPath(location.state);
   // Signed out, so every unsynced record belongs to another session; only the
   // count is shown.
   const { data: deviceCounts } = useDeviceOutboxCounts();
@@ -24,7 +28,7 @@ export function LoginPage() {
     : 0;
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={returnPath} replace />;
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -34,14 +38,16 @@ export function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate('/dashboard', { replace: true });
+      navigate(returnPath, { replace: true });
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);
       } else if (isNetworkError(err)) {
-        setError('You appear to be offline. Connect to the internet to sign in.');
+        setError(
+          "You appear to be offline. Connect to the internet to sign in.",
+        );
       } else {
-        setError('An unexpected error occurred during login.');
+        setError("An unexpected error occurred during login.");
       }
     } finally {
       setIsSubmitting(false);
@@ -49,34 +55,44 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-primary-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-dvh bg-primary-50 flex flex-col justify-center px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center">
-          <svg className="h-12 w-12 text-accent-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-          </svg>
+          <img
+            src="/logo.svg"
+            alt="AirTracer Logo"
+            className="h-14 sm:h-16 w-auto"
+          />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-brand-tertiary">
-          Sign in to AirTracer
+        <h2 className="mt-5 text-center text-2xl sm:text-3xl font-extrabold text-brand-tertiary">
+          Sign in to{" "}
+          <span>
+            <span className="text-brand-primary">Air</span>
+            <span className="text-brand-secondary">Tracer</span>
+          </span>
         </h2>
         <p className="mt-2 text-center text-sm text-primary-600">
-          Or{' '}
-          <Link to="/auth/register" className="font-medium text-accent-600 hover:text-accent-700">
+          Or{" "}
+          <Link
+            to="/register"
+            state={location.state}
+            className="font-medium text-accent-600 hover:text-accent-700"
+          >
             create a new account
           </Link>
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-primary-200">
+      <div className="mt-8 mx-auto w-full max-w-md">
+        <div className="bg-white rounded-2xl border border-primary-200 shadow-card px-5 py-7 sm:px-10 sm:py-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {unsyncedOnDevice > 0 && (
               <Alert variant="info" title="Records waiting to sync">
                 {unsyncedOnDevice} service record
-                {unsyncedOnDevice === 1 ? ' is' : 's are'} saved on this
-                device. Sign in with the account that created{' '}
-                {unsyncedOnDevice === 1 ? 'it' : 'them'} to upload{' '}
-                {unsyncedOnDevice === 1 ? 'it' : 'them'}.
+                {unsyncedOnDevice === 1 ? " is" : "s are"} saved on this device.
+                Sign in with the account that created{" "}
+                {unsyncedOnDevice === 1 ? "it" : "them"} to upload{" "}
+                {unsyncedOnDevice === 1 ? "it" : "them"}.
               </Alert>
             )}
             {error && (
@@ -85,42 +101,36 @@ export function LoginPage() {
               </Alert>
             )}
 
-            <div>
-              <Input
-                id="email"
-                type="email"
-                label="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                disabled={isSubmitting}
-              />
-            </div>
+            <Input
+              id="email"
+              type="email"
+              label="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              disabled={isSubmitting}
+            />
 
-            <div>
-              <Input
-                id="password"
-                type="password"
-                label="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                disabled={isSubmitting}
-              />
-            </div>
+            <Input
+              id="password"
+              type="password"
+              label="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              disabled={isSubmitting}
+            />
 
-            <div>
-              <Button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4"
-                disabled={isSubmitting}
-                isLoading={isSubmitting}
-              >
-                Sign in
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+            >
+              Sign in
+            </Button>
           </form>
         </div>
       </div>

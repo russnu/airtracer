@@ -55,7 +55,7 @@ export function InstallAppButton({ variant }: InstallAppButtonProps) {
       {variant === 'menu' && (
         <button
           onClick={handleClick}
-          className="flex w-full items-center gap-2 text-left px-4 py-2 text-base font-medium text-primary-500 hover:text-primary-800 hover:bg-primary-100"
+          className="mx-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border-l-4 border-transparent px-3 py-2.5 text-left text-base font-medium text-primary-600 transition-colors hover:bg-accent-100 hover:text-brand-tertiary"
         >
           {icon}
           Install app

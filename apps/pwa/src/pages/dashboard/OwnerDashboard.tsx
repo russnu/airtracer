@@ -1,3 +1,6 @@
+import type { ComponentType } from "react";
+import type { IconBaseProps } from "react-icons";
+import { PiCheckCircleBold, PiPackageBold, PiQrCodeBold } from "react-icons/pi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { assetsApi } from "../../lib/api-client";
@@ -6,6 +9,39 @@ import { SavedPassportsList } from "../../components/offline/SavedPassportsList"
 import { Badge } from "../../components/ui/Badge";
 import { buttonClasses } from "../../components/ui/buttonClasses";
 import { Spinner } from "../../components/ui/Spinner";
+
+type StatTone = "accent" | "success" | "teal";
+
+// Full class strings so Tailwind can see them.
+const statToneClasses: Record<StatTone, string> = {
+  accent: "bg-accent-50 text-accent-700 ring-accent-100",
+  success: "bg-success-50 text-success-700 ring-success-100",
+  teal: "bg-brand-secondary-50 text-brand-secondary-700 ring-brand-secondary-100",
+};
+
+interface StatChipProps {
+  label: string;
+  value: number | undefined;
+  icon: ComponentType<IconBaseProps>;
+  tone: StatTone;
+  isLoading: boolean;
+}
+
+function StatChip({ label, value, icon: Icon, tone, isLoading }: StatChipProps) {
+  return (
+    <li
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs ring-1 ring-inset sm:px-3 sm:text-sm ${statToneClasses[tone]}`}
+    >
+      <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+      {isLoading ? (
+        <span className="h-3.5 w-4 animate-pulse rounded bg-current opacity-20" />
+      ) : (
+        <strong className="font-semibold">{value ?? "–"}</strong>
+      )}
+      <span>{label}</span>
+    </li>
+  );
+}
 
 export function OwnerDashboard() {
   const { user } = useAuth();
@@ -26,46 +62,38 @@ export function OwnerDashboard() {
           Welcome back, {user?.firstName}!
         </h1>
         <p className="mt-1 text-sm text-primary-500">
-          Here's an overview of your equipment.
+          Here's an overview of your equipments.
         </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-primary-500 truncate">
-              Total Equipment
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-primary-900">
-              {assets ? assets.length : "-"}
-            </dd>
-          </div>
-        </div>
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-primary-500 truncate">
-              Active Equipment
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-primary-900">
-              {assets ? assets.filter((a) => a.isActive).length : "-"}
-            </dd>
-          </div>
-        </div>
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <dt className="text-sm font-medium text-primary-500 truncate">
-              Recent Services
-            </dt>
-            <dd className="mt-1 text-3xl font-semibold text-primary-900">-</dd>
-          </div>
-        </div>
+        <ul
+          aria-label="Equipment summary"
+          className="mt-3 flex flex-wrap gap-2"
+        >
+          <StatChip
+            label="total"
+            value={assets?.length}
+            icon={PiPackageBold}
+            tone="accent"
+            isLoading={isLoading}
+          />
+          <StatChip
+            label="active"
+            value={assets?.filter((a) => a.isActive).length}
+            icon={PiCheckCircleBold}
+            tone="success"
+            isLoading={isLoading}
+          />
+          <StatChip
+            label="QR ready"
+            value={assets?.filter((a) => a.qrCode).length}
+            icon={PiQrCodeBold}
+            tone="teal"
+            isLoading={isLoading}
+          />
+        </ul>
       </div>
 
       <div className="flex gap-4">
-        <Link
-          to="/equipment/new"
-          className={buttonClasses("primary")}
-        >
+        <Link to="/equipment/new" className={buttonClasses("primary")}>
           <svg
             className="h-5 w-5"
             fill="none"
@@ -81,10 +109,7 @@ export function OwnerDashboard() {
           </svg>
           Register Equipment
         </Link>
-        <Link
-          to="/scan"
-          className={buttonClasses("secondary")}
-        >
+        <Link to="/scan" className={buttonClasses("secondary")}>
           <svg
             className="h-5 w-5 text-primary-500"
             fill="none"

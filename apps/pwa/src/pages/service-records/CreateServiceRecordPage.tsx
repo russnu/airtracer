@@ -11,6 +11,7 @@ import {
 import type { Asset } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSyncNow } from '../../hooks/useOutbox';
+import { useGoBack } from '../../hooks/useGoBack';
 import {
   discardOutboxItem,
   enqueueServiceRecord,
@@ -24,6 +25,7 @@ import {
 import { getSavedPassportByAssetId } from '../../lib/offline/passports';
 import type { PassportView } from '../../lib/offline/passports';
 import { Button } from '../../components/ui/Button';
+import { BackButton } from '../../components/ui/BackButton';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
@@ -176,9 +178,12 @@ function ServiceRecordForm({
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const userId = user?.id ?? null;
   const syncNow = useSyncNow();
+  // Opened from a deep link there is no page to return to, so leave to a list.
+  const backFallback = hasRole('TECHNICIAN') ? '/service-records' : '/dashboard';
+  const { goBack } = useGoBack(backFallback);
 
   const [formData, setFormData] = useState<FormState>(() =>
     retryItem ? formFromPayload(retryItem.payload) : emptyForm(),
@@ -214,7 +219,7 @@ function ServiceRecordForm({
         clientRequestId,
         clientCapturedAt: new Date().toISOString(),
       });
-      navigate(-1);
+      goBack();
     } catch (err) {
       setError(
         err instanceof ApiClientError
@@ -281,7 +286,7 @@ function ServiceRecordForm({
 
     const item = await getOutboxItem(clientRequestId).catch(() => null);
     if (item?.status === 'synced') {
-      navigate(-1);
+      goBack();
       return;
     }
     if (item?.status === 'needs_attention') {
@@ -309,7 +314,7 @@ function ServiceRecordForm({
           returns. You can follow its progress on the Pending sync page.
         </Alert>
         <div className="flex flex-wrap gap-3">
-          <Button onClick={() => navigate(-1)}>Done</Button>
+          <Button onClick={goBack}>Done</Button>
           <Button variant="outline" onClick={() => navigate('/sync')}>
             View pending sync
           </Button>
@@ -323,13 +328,7 @@ function ServiceRecordForm({
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 pb-20">
       <div className="mb-6 flex items-center space-x-4">
-        <button 
-          onClick={() => navigate(-1)}
-          className="text-primary-500 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 p-2 rounded-full transition-colors"
-          aria-label="Go back"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-        </button>
+        <BackButton fallback={backFallback} />
         <PageHeader 
           title="New Service Record" 
           description={
@@ -478,7 +477,7 @@ function ServiceRecordForm({
         </Card>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-primary-200">
-          <Button type="button" variant="outline" onClick={() => navigate(-1)} disabled={isSaving}>
+          <Button type="button" variant="outline" onClick={goBack} disabled={isSaving}>
             Cancel
           </Button>
           <Button type="submit" disabled={isSaving} isLoading={isSaving}>

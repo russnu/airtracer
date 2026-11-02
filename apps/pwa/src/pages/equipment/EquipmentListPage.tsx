@@ -11,6 +11,7 @@ import {
   Alert,
 } from "../../components/ui";
 import type { Asset } from "../../types/api";
+import { PiCaretRightBold } from "react-icons/pi";
 
 export function EquipmentListPage() {
   const {
@@ -112,8 +113,12 @@ export function EquipmentListPage() {
                   >
                     {asset.qrCode ? "✓ QR Ready" : "No QR Code"}
                   </span>
-                  <span className="text-accent-600 font-medium group-hover:underline">
-                    View Details →
+                  <span className="inline-flex items-center gap-1.5 font-medium text-accent-600 group-hover:text-accent-700 transition-colors">
+                    View details
+                    <PiCaretRightBold
+                      size={16}
+                      className="transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none"
+                    />
                   </span>
                 </div>
               </Card>

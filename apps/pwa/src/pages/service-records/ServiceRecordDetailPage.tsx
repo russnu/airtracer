@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   serviceRecordsApi,
@@ -14,10 +14,11 @@ import { Alert } from "../../components/ui/Alert";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { BackButton } from "../../components/ui/BackButton";
 import type { ServiceRecord, ServiceStatus } from "../../types/api";
-import { PiArrowLeftBold } from "react-icons/pi";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
+import { useGoBack } from "../../hooks/useGoBack";
 import {
   NEXT_SERVICE_STATUSES,
   serviceStatusBadgeVariant,
@@ -57,9 +58,11 @@ const MEASUREMENTS: {
 
 export function ServiceRecordDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  // Opened from a deep link there is no page to return to, so leave to a list.
+  const backFallback = hasRole("TECHNICIAN") ? "/service-records" : "/dashboard";
+  const { goBack } = useGoBack(backFallback);
   const isOnline = useOnlineStatus();
 
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -161,7 +164,7 @@ export function ServiceRecordDetailPage() {
         <Alert variant="error" title="Error">
           Failed to load service record details.
         </Alert>
-        <Button variant="outline" className="mt-4" onClick={() => navigate(-1)}>
+        <Button variant="outline" className="mt-4" onClick={goBack}>
           Go Back
         </Button>
       </div>
@@ -182,13 +185,7 @@ export function ServiceRecordDetailPage() {
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-20">
       <div className="mb-6 flex items-start space-x-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-primary-500 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 p-2 rounded-full transition-colors"
-          aria-label="Go back"
-        >
-          <PiArrowLeftBold className="w-5 h-5" />
-        </button>
+        <BackButton fallback={backFallback} />
         <PageHeader
           title="Service Record Details"
           description={`Logged on ${new Date(record.serviceDate).toLocaleDateString()}`}

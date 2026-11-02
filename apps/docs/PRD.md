@@ -436,7 +436,7 @@ Equipment registration and ownership assignment must follow the approved registr
 3. The frontend sends the request to the existing authentication API.
 4. The backend validates credentials and returns the documented response.
 5. The frontend establishes authenticated state using the approved token-handling strategy.
-6. The user is directed to the appropriate page according to their role.
+6. The user is returned to the page they originally requested, if any (for example, a scanned passport); otherwise they are directed to the appropriate page according to their role.
 7. Invalid credentials, expired authentication, and server errors are handled clearly.
 
 ---

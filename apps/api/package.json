@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "dev": "pnpm start:dev",
+    "dev:test-db": "dotenv -e .env.test -- nest start --watch",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -19,9 +20,20 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "dotenv -e .env.test -- node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config ./test/jest-e2e.json",
+    "db:generate": "prisma generate",
+    "db:migration:new": "dotenv -e .env.test -- prisma migrate dev --create-only",
+    "db:status": "dotenv -e .env -- prisma migrate status",
+    "db:migrate": "dotenv -e .env -- prisma migrate deploy",
+    "db:seed:dry": "dotenv -e .env -- prisma db seed -- --allow-remote --dry-run",
+    "db:seed": "dotenv -e .env -- prisma db seed -- --allow-remote",
+    "db:refresh": "pnpm db:migrate && pnpm db:seed",
+    "db:studio": "dotenv -e .env -- prisma studio",
+    "test:db:status": "dotenv -e .env.test -- prisma migrate status",
     "test:db:migrate": "dotenv -e .env.test -- prisma migrate deploy",
-    "test:db:reset": "dotenv -e .env.test -- prisma migrate reset",
-    "test:db:seed": "dotenv -e .env.test -- prisma db seed"
+    "test:db:seed:dry": "dotenv -e .env.test -- prisma db seed -- --dry-run",
+    "test:db:seed": "dotenv -e .env.test -- prisma db seed",
+    "test:db:refresh": "pnpm test:db:migrate && pnpm test:db:seed",
+    "test:db:studio": "dotenv -e .env.test -- prisma studio"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

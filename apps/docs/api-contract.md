@@ -75,7 +75,7 @@ Records are append-only, so voiding is the only change. It is one-way: a voided 
 
 Audit event: `SERVICE_RECORD_VOIDED` with `serviceRecordId` and `reason`.
 
-The former `PATCH /service-records/:id/status` workflow has been removed. Existing audit entries for `SERVICE_RECORD_UPDATED`, `SERVICE_RECORD_COMPLETED` and `SERVICE_RECORD_CANCELLED` are kept, but these events are no longer written.
+The former `PATCH /service-records/:id/status` workflow has been removed. Its audit events (`SERVICE_RECORD_UPDATED`, `SERVICE_RECORD_COMPLETED`, `SERVICE_RECORD_CANCELLED`) and the unused `ASSET_ASSIGNED` and `ASSET_OWNERSHIP_CHANGED` events were dropped from the schema, and their existing audit entries were deleted.
 
 ## Service photos
 

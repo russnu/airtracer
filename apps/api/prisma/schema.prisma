@@ -16,18 +16,11 @@ enum Event {
   // Asset
   ASSET_CREATED
   ASSET_UPDATED
-  ASSET_ASSIGNED
-  ASSET_OWNERSHIP_CHANGED
   ASSET_DEACTIVATED
 
   // Service Record
   SERVICE_RECORD_CREATED
   SERVICE_RECORD_VOIDED
-  // Legacy: written by the removed status workflow. No longer emitted, but
-  // kept because existing hash-chained audit entries use them.
-  SERVICE_RECORD_UPDATED
-  SERVICE_RECORD_COMPLETED
-  SERVICE_RECORD_CANCELLED
 
   // QR Code
   QR_GENERATED

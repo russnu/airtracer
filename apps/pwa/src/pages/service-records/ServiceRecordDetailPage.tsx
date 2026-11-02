@@ -15,25 +15,16 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { BackButton } from "../../components/ui/BackButton";
-import type { ServiceRecord, ServiceStatus } from "../../types/api";
+import { Textarea } from "../../components/ui/Textarea";
+import type { ServiceRecord } from "../../types/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 import { useGoBack } from "../../hooks/useGoBack";
 import {
-  NEXT_SERVICE_STATUSES,
-  serviceStatusBadgeVariant,
-  serviceStatusLabel,
-} from "../../components/service-records/serviceStatus";
-
-const STATUS_ACTIONS: Record<
-  ServiceStatus,
-  { label: string; variant: "primary" | "success" | "outline" }
-> = {
-  PENDING: { label: "Reopen", variant: "outline" },
-  IN_PROGRESS: { label: "Start work", variant: "primary" },
-  COMPLETED: { label: "Mark completed", variant: "success" },
-  CANCELLED: { label: "Cancel record", variant: "outline" },
-};
+  serviceRecordState,
+  serviceRecordStateBadgeVariant,
+  serviceRecordStateLabel,
+} from "../../components/service-records/serviceOutcome";
 
 const MEASUREMENTS: {
   key: keyof Pick<
@@ -65,10 +56,10 @@ export function ServiceRecordDetailPage() {
   const { goBack } = useGoBack(backFallback);
   const isOnline = useOnlineStatus();
 
-  const [statusError, setStatusError] = useState<string | null>(null);
-  const [confirmStatus, setConfirmStatus] = useState<ServiceStatus | null>(
-    null,
-  );
+  const [voidError, setVoidError] = useState<string | null>(null);
+  const [isVoidDialogOpen, setIsVoidDialogOpen] = useState(false);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidReasonError, setVoidReasonError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -105,37 +96,48 @@ export function ServiceRecordDetailPage() {
     },
   });
 
-  const statusMutation = useMutation({
-    mutationFn: (status: ServiceStatus) =>
-      serviceRecordsApi.updateStatus(id!, { status }),
+  const closeVoidDialog = () => {
+    setIsVoidDialogOpen(false);
+    setVoidReason("");
+    setVoidReasonError(null);
+  };
+
+  const voidMutation = useMutation({
+    mutationFn: (reason: string) =>
+      serviceRecordsApi.voidRecord(id!, { reason }),
     onSuccess: (updated) => {
-      setStatusError(null);
-      setConfirmStatus(null);
+      setVoidError(null);
+      closeVoidDialog();
       // The PATCH response has no asset, so keep the one already loaded.
-      queryClient.setQueryData<ServiceRecord>(
-        ["service-records", id],
-        (current) => (current ? { ...current, status: updated.status } : current),
+      queryClient.setQueryData<ServiceRecord>(["service-records", id], (current) =>
+        current
+          ? {
+              ...current,
+              voidedAt: updated.voidedAt,
+              voidReason: updated.voidReason,
+            }
+          : current,
       );
       queryClient.invalidateQueries({ queryKey: ["service-records", "mine"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
     },
     onError: (err) => {
-      setConfirmStatus(null);
-      setStatusError(
+      closeVoidDialog();
+      setVoidError(
         err instanceof ApiClientError
           ? err.message
-          : "Failed to update the status.",
+          : "Failed to void the record.",
       );
     },
   });
 
-  const handleStatusChange = (status: ServiceStatus) => {
-    // COMPLETED and CANCELLED are final, so confirm them first.
-    if (NEXT_SERVICE_STATUSES[status].length === 0) {
-      setConfirmStatus(status);
-    } else {
-      statusMutation.mutate(status);
+  const handleConfirmVoid = () => {
+    const reason = voidReason.trim();
+    if (!reason) {
+      setVoidReasonError("Enter why this record is being voided.");
+      return;
     }
+    voidMutation.mutate(reason);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -173,11 +175,11 @@ export function ServiceRecordDetailPage() {
 
   // The API enforces these; they only decide which controls to show.
   const isRecordTechnician = !!user && user.id === record.technicianId;
+  const isVoided = !!record.voidedAt;
   const canAddPhotos =
-    isRecordTechnician || (!!user && user.id === record.asset?.ownerId);
-  const nextStatuses = isRecordTechnician
-    ? NEXT_SERVICE_STATUSES[record.status]
-    : [];
+    !isVoided &&
+    (isRecordTechnician || (!!user && user.id === record.asset?.ownerId));
+  const state = serviceRecordState(record);
   const recordedMeasurements = MEASUREMENTS.filter(
     ({ key }) => record[key] !== null,
   );
@@ -215,53 +217,52 @@ export function ServiceRecordDetailPage() {
               </p>
             </div>
             <Badge
-              variant={serviceStatusBadgeVariant(record.status)}
+              variant={serviceRecordStateBadgeVariant(state)}
               className="shrink-0"
             >
-              {serviceStatusLabel(record.status)}
+              {serviceRecordStateLabel(state)}
             </Badge>
           </div>
 
-          {/* Status actions: only for the technician who created the record */}
-          {isRecordTechnician && (
-            <div className="mb-6">
-              {statusError && (
-                <Alert
-                  variant="error"
-                  className="mb-3"
-                  onDismiss={() => setStatusError(null)}
-                >
-                  {statusError}
-                </Alert>
-              )}
-              {nextStatuses.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {nextStatuses.map((status) => (
-                    <Button
-                      key={status}
-                      size="sm"
-                      variant={STATUS_ACTIONS[status].variant}
-                      disabled={!isOnline || statusMutation.isPending}
-                      isLoading={
-                        statusMutation.isPending &&
-                        statusMutation.variables === status
-                      }
-                      onClick={() => handleStatusChange(status)}
-                    >
-                      {STATUS_ACTIONS[status].label}
-                    </Button>
-                  ))}
-                  {!isOnline && (
-                    <span className="text-sm text-primary-500">
-                      Status changes need a connection.
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-primary-500">
-                  This record is {serviceStatusLabel(record.status).toLowerCase()}{" "}
-                  and can no longer change status.
+          {isVoided && (
+            <Alert variant="warning" title="Voided record" className="mb-6">
+              <p>
+                Voided on {new Date(record.voidedAt!).toLocaleDateString()}.{" "}
+                {record.voidReason ?? "No reason recorded."}
+              </p>
+              {record.outcome && (
+                <p className="mt-1">
+                  Recorded outcome: {serviceRecordStateLabel(record.outcome)}.
                 </p>
+              )}
+            </Alert>
+          )}
+
+          {voidError && (
+            <Alert
+              variant="error"
+              className="mb-6"
+              onDismiss={() => setVoidError(null)}
+            >
+              {voidError}
+            </Alert>
+          )}
+
+          {/* Voiding: only the technician who created the record */}
+          {isRecordTechnician && !isVoided && (
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!isOnline || voidMutation.isPending}
+                onClick={() => setIsVoidDialogOpen(true)}
+              >
+                Void record
+              </Button>
+              {!isOnline && (
+                <span className="text-sm text-primary-500">
+                  Voiding needs a connection.
+                </span>
               )}
             </div>
           )}
@@ -419,24 +420,31 @@ export function ServiceRecordDetailPage() {
       </div>
 
       <ConfirmDialog
-        open={confirmStatus !== null}
-        title={
-          confirmStatus === "COMPLETED"
-            ? "Mark this record completed?"
-            : "Cancel this record?"
-        }
-        tone={confirmStatus === "COMPLETED" ? "primary" : "danger"}
-        confirmLabel={
-          confirmStatus ? STATUS_ACTIONS[confirmStatus].label : "Confirm"
-        }
-        isConfirming={statusMutation.isPending}
-        onConfirm={() => confirmStatus && statusMutation.mutate(confirmStatus)}
-        onCancel={() => setConfirmStatus(null)}
+        open={isVoidDialogOpen}
+        title="Void this record?"
+        confirmLabel="Void record"
+        isConfirming={voidMutation.isPending}
+        onConfirm={handleConfirmVoid}
+        onCancel={closeVoidDialog}
       >
-        <p>
-          {confirmStatus === "COMPLETED" ? "Completed" : "Cancelled"} is a final
-          status. The record cannot change status again afterwards.
+        <p className="mb-4">
+          The record stays in the equipment's history, labelled as voided.
+          Voiding cannot be undone. If details were wrong, create a new record
+          with the correct ones.
         </p>
+        <Textarea
+          id="void-reason"
+          label="Reason"
+          required
+          maxLength={500}
+          rows={3}
+          value={voidReason}
+          error={voidReasonError ?? undefined}
+          onChange={(e) => {
+            setVoidReason(e.target.value);
+            setVoidReasonError(null);
+          }}
+        />
       </ConfirmDialog>
     </div>
   );

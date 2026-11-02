@@ -5,7 +5,7 @@ import { RoleName } from '../roles/enums/role-name.enum';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CreateServiceRecordDto } from './dto/create-service-record.dto';
-import { UpdateServiceRecordStatusDto } from './dto/update-service-record-status.dto';
+import { VoidServiceRecordDto } from './dto/void-service-record.dto';
 
 @Controller()
 export class ServiceRecordsController {
@@ -41,14 +41,14 @@ export class ServiceRecordsController {
     return this.serviceRecordService.findByAsset(assetId);
   }
   //-------------------------------------------------------------//
-  // Only the technician who created the record; see ALLOWED_STATUS_TRANSITIONS.
+  // Only the technician who created the record. Voiding is one-way.
   @Roles(RoleName.TECHNICIAN)
-  @Patch('/service-records/:id/status')
-  updateStatus(
+  @Patch('/service-records/:id/void')
+  voidRecord(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: UpdateServiceRecordStatusDto,
+    @Body() dto: VoidServiceRecordDto,
   ) {
-    return this.serviceRecordService.updateStatus(id, user.id, dto);
+    return this.serviceRecordService.voidRecord(id, user.id, dto);
   }
 }

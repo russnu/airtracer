@@ -1,8 +1,13 @@
+import { ServiceOutcome } from '../../../generated/prisma/enums';
+
 export class PublicServiceRecordDto {
   id!: string;
   serviceDate!: Date;
   serviceType!: string;
   description?: string | null;
+  outcome!: ServiceOutcome | null;
+  voidedAt!: Date | null;
+  voidReason!: string | null;
 
   measurements?: {
     suctionPressure: number | null;

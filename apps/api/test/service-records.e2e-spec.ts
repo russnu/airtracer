@@ -29,6 +29,7 @@ describe('Service records and photos E2E', () => {
     serviceDate: '2026-10-20T00:00:00.000Z',
     serviceType: 'Preventive Maintenance',
     description: 'E2E service record',
+    outcome: 'RESOLVED',
     suctionPressure: 70,
   };
 
@@ -153,6 +154,31 @@ describe('Service records and photos E2E', () => {
         ...baseRecord,
         clientRequestId: 'not-a-uuid',
       }).expect(400);
+    });
+
+    it('SR-004: should reject a record without an outcome', async () => {
+      const withoutOutcome: Partial<typeof baseRecord> = { ...baseRecord };
+      delete withoutOutcome.outcome;
+      await createRecord(technicianToken, assetId, withoutOutcome).expect(400);
+    });
+
+    it('SR-005: should reject an unknown outcome', async () => {
+      await createRecord(technicianToken, assetId, {
+        ...baseRecord,
+        outcome: 'COMPLETED',
+      }).expect(400);
+    });
+
+    it('SR-006: should store the outcome on a new record', async () => {
+      const response = await createRecord(technicianToken, assetId, {
+        ...baseRecord,
+        outcome: 'FOLLOW_UP_NEEDED',
+      }).expect(201);
+      expect(response.body).toMatchObject({
+        outcome: 'FOLLOW_UP_NEEDED',
+        voidedAt: null,
+        voidReason: null,
+      });
     });
   });
 
@@ -382,7 +408,9 @@ describe('Service records and photos E2E', () => {
   interface RecordBody {
     id: string;
     technicianId: string;
-    status: string;
+    outcome: string | null;
+    voidedAt: string | null;
+    voidReason: string | null;
     photoCount?: number;
     asset?: { id: string; brand: string };
   }
@@ -458,44 +486,75 @@ describe('Service records and photos E2E', () => {
   });
 
   // ============================================================= //
-  // STATUS CHANGES
+  // VOIDING
   // ============================================================= //
 
-  describe('PATCH /service-records/:id/status', () => {
+  describe('PATCH /service-records/:id/void', () => {
     let serviceRecordId: string;
+    const reason = 'Recorded on the wrong unit.';
 
-    function setStatus(token: string, status: string) {
+    function voidRecord(token: string, body: object) {
       return request(app.getHttpServer())
-        .patch(`/service-records/${serviceRecordId}/status`)
+        .patch(`/service-records/${serviceRecordId}/void`)
         .set('Authorization', `Bearer ${token}`)
-        .send({ status });
+        .send(body);
     }
 
     beforeAll(async () => {
       serviceRecordId = await createRecordId();
     });
 
-    it('ST-001: should reject a change by another technician', async () => {
-      await setStatus(otherTechnicianToken, 'IN_PROGRESS').expect(403);
+    it('VD-001: should reject voiding by another technician', async () => {
+      await voidRecord(otherTechnicianToken, { reason }).expect(403);
     });
 
-    it('ST-002: should reject a change by an owner', async () => {
-      await setStatus(ownerToken, 'IN_PROGRESS').expect(403);
+    it('VD-002: should reject voiding by an owner', async () => {
+      await voidRecord(ownerToken, { reason }).expect(403);
     });
 
-    it('ST-003: should reject skipping from PENDING to COMPLETED', async () => {
-      await setStatus(technicianToken, 'COMPLETED').expect(400);
+    it('VD-003: should require a reason', async () => {
+      await voidRecord(technicianToken, {}).expect(400);
+      await voidRecord(technicianToken, { reason: '' }).expect(400);
     });
 
-    it('ST-004: should follow PENDING -> IN_PROGRESS -> COMPLETED and then stay final', async () => {
-      await setStatus(technicianToken, 'IN_PROGRESS').expect(200);
-      const completed = await setStatus(technicianToken, 'COMPLETED').expect(
-        200,
+    it('VD-004: should reject the removed status endpoint', async () => {
+      await request(app.getHttpServer())
+        .patch(`/service-records/${serviceRecordId}/status`)
+        .set('Authorization', `Bearer ${technicianToken}`)
+        .send({ status: 'COMPLETED' })
+        .expect(404);
+    });
+
+    it('VD-005: should void once, then reject a second void', async () => {
+      const voided = await voidRecord(technicianToken, { reason }).expect(200);
+      expect((voided.body as RecordBody).voidReason).toBe(reason);
+      expect(typeof (voided.body as RecordBody).voidedAt).toBe('string');
+
+      await voidRecord(technicianToken, { reason }).expect(409);
+
+      const audit = await prisma.auditLog.findMany({
+        where: { assetId, event: 'SERVICE_RECORD_VOIDED' },
+      });
+      expect(audit).toHaveLength(1);
+    });
+
+    it('VD-006: should keep a voided record on the public passport', async () => {
+      const token = `e2e-sr-qr-${runId}`;
+      await prisma.qRCode.create({ data: { token, assetId } });
+
+      const response = await request(app.getHttpServer())
+        .get(`/qr/${token}`)
+        .expect(200);
+
+      const { serviceHistory } = response.body as {
+        serviceHistory: RecordBody[];
+      };
+      const voided = serviceHistory.find(
+        (record) => record.id === serviceRecordId,
       );
-      expect((completed.body as RecordBody).status).toBe('COMPLETED');
-
-      await setStatus(technicianToken, 'CANCELLED').expect(400);
-      await setStatus(technicianToken, 'IN_PROGRESS').expect(400);
+      expect(voided?.outcome).toBe('RESOLVED');
+      expect(typeof voided?.voidedAt).toBe('string');
+      expect(voided?.voidReason).toBe(reason);
     });
   });
 });

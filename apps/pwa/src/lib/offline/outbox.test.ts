@@ -25,6 +25,7 @@ function input(overrides: Partial<EnqueueInput> = {}): EnqueueInput {
     payload: {
       serviceDate: '2026-10-20T00:00:00.000Z',
       serviceType: 'Preventive Maintenance',
+      outcome: 'RESOLVED',
       suctionPressure: 70,
     },
     ...overrides,

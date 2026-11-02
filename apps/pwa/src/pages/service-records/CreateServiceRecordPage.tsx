@@ -8,7 +8,7 @@ import {
   ApiClientError,
   isNetworkError,
 } from '../../lib/api-client';
-import type { Asset } from '../../types/api';
+import type { Asset, ServiceOutcome } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSyncNow } from '../../hooks/useOutbox';
 import { useGoBack } from '../../hooks/useGoBack';
@@ -32,6 +32,10 @@ import { Textarea } from '../../components/ui/Textarea';
 import { Card } from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
 import { PageHeader } from '../../components/ui/PageHeader';
+import {
+  SERVICE_OUTCOMES,
+  serviceRecordStateLabel,
+} from '../../components/service-records/serviceOutcome';
 import { Spinner } from '../../components/ui/Spinner';
 
 // How long to wait for an online save before telling the user the record is
@@ -42,6 +46,8 @@ interface FormState {
   serviceDate: string;
   serviceType: string;
   description: string;
+  /** Empty until the technician chooses one. */
+  outcome: ServiceOutcome | '';
   suctionPressure: string;
   dischargePressure: string;
   current: string;
@@ -57,6 +63,7 @@ function emptyForm(): FormState {
     serviceDate: new Date().toISOString().split('T')[0],
     serviceType: 'Preventive Maintenance',
     description: '',
+    outcome: '',
     suctionPressure: '',
     dischargePressure: '',
     current: '',
@@ -75,6 +82,8 @@ function formFromPayload(payload: OutboxPayload): FormState {
     serviceDate: payload.serviceDate.split('T')[0],
     serviceType: payload.serviceType,
     description: payload.description ?? '',
+    // Records queued before outcomes existed have none: the form asks for it.
+    outcome: payload.outcome ?? '',
     suctionPressure: toText(payload.suctionPressure),
     dischargePressure: toText(payload.dischargePressure),
     current: toText(payload.current),
@@ -92,6 +101,8 @@ function payloadFromForm(formData: FormState): OutboxPayload {
     serviceDate: new Date(formData.serviceDate).toISOString(),
     serviceType: formData.serviceType,
     description: formData.description || undefined,
+    // The required select ensures a choice before submit.
+    outcome: formData.outcome as ServiceOutcome,
     suctionPressure: formData.suctionPressure ? parseFloat(formData.suctionPressure) : undefined,
     dischargePressure: formData.dischargePressure ? parseFloat(formData.dischargePressure) : undefined,
     current: formData.current ? parseFloat(formData.current) : undefined,
@@ -380,6 +391,18 @@ function ServiceRecordForm({
               onChange={handleChange}
               placeholder="Briefly describe the work performed..."
               rows={3}
+            />
+            <Select
+              label="Outcome"
+              name="outcome"
+              value={formData.outcome}
+              onChange={handleChange}
+              required
+              placeholder="Select the result of this visit"
+              options={SERVICE_OUTCOMES.map((outcome) => ({
+                label: serviceRecordStateLabel(outcome),
+                value: outcome,
+              }))}
             />
           </div>
         </Card>

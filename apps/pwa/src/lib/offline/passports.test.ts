@@ -29,6 +29,9 @@ function passport(assetId = 'asset-1', photoCount = 2): PublicPassportResponse {
         serviceDate: '2026-10-01T00:00:00.000Z',
         serviceType: 'Inspection',
         description: null,
+        outcome: 'RESOLVED',
+        voidedAt: '2026-10-02T00:00:00.000Z',
+        voidReason: 'Recorded on the wrong unit.',
         measurements: {
           suctionPressure: 70,
           dischargePressure: null,
@@ -99,6 +102,39 @@ describe('saved passports', () => {
       expect(view.source).toBe('saved');
       expect(view.data.serviceHistory[0].photos).toEqual([]);
       expect(view.photoCounts).toEqual({ 'record-1': 2 });
+    });
+
+    it('keeps the outcome and void details in the saved copy', async () => {
+      await savePassport('ATR_1', passport(), 'user-1');
+      getPublicPassport.mockRejectedValue(new NetworkError(new TypeError('offline')));
+
+      const view = await loadPassport('ATR_1', 'user-1');
+
+      expect(view.data.serviceHistory[0]).toMatchObject({
+        outcome: 'RESOLVED',
+        voidedAt: '2026-10-02T00:00:00.000Z',
+        voidReason: 'Recorded on the wrong unit.',
+      });
+    });
+
+    it('reads a copy saved before outcomes existed as not recorded', async () => {
+      const legacy = passport();
+      for (const record of legacy.serviceHistory) {
+        const fields = record as Partial<typeof record>;
+        delete fields.outcome;
+        delete fields.voidedAt;
+        delete fields.voidReason;
+      }
+      await savePassport('ATR_1', legacy, 'user-1');
+      getPublicPassport.mockRejectedValue(new NetworkError(new TypeError('offline')));
+
+      const view = await loadPassport('ATR_1', 'user-1');
+
+      expect(view.data.serviceHistory[0]).toMatchObject({
+        outcome: null,
+        voidedAt: null,
+        voidReason: null,
+      });
     });
 
     it('does not fall back for a signed-out visitor', async () => {

@@ -2,7 +2,7 @@
 
 export type RoleName = 'OWNER' | 'TECHNICIAN' | 'ADMIN';
 
-export type ServiceStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type ServiceOutcome = 'RESOLVED' | 'FOLLOW_UP_NEEDED' | 'UNABLE_TO_COMPLETE';
 
 // ===== Auth =====
 
@@ -114,6 +114,10 @@ export interface PublicServiceRecord {
   serviceDate: string;
   serviceType: string;
   description: string | null;
+  /** Null only on records created before outcomes were recorded. */
+  outcome: ServiceOutcome | null;
+  voidedAt: string | null;
+  voidReason: string | null;
   measurements: {
     suctionPressure: number | null;
     dischargePressure: number | null;
@@ -142,7 +146,10 @@ export interface ServiceRecord {
   serviceDate: string;
   serviceType: string;
   description: string | null;
-  status: ServiceStatus;
+  /** Null only on records created before outcomes were recorded. */
+  outcome: ServiceOutcome | null;
+  voidedAt: string | null;
+  voidReason: string | null;
   suctionPressure: number | null;
   dischargePressure: number | null;
   current: number | null;
@@ -181,6 +188,7 @@ export interface CreateServiceRecordPayload {
   serviceDate: string;
   serviceType: string;
   description?: string;
+  outcome: ServiceOutcome;
   suctionPressure?: number;
   dischargePressure?: number;
   current?: number;
@@ -191,8 +199,8 @@ export interface CreateServiceRecordPayload {
   recommendations?: string;
 }
 
-export interface UpdateServiceRecordStatusPayload {
-  status: ServiceStatus;
+export interface VoidServiceRecordPayload {
+  reason: string;
 }
 
 // ===== Service Photos =====

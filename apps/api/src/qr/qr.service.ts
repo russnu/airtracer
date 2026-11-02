@@ -178,6 +178,9 @@ export class QrService {
         serviceDate: record.serviceDate,
         serviceType: record.serviceType,
         description: record.description,
+        outcome: record.outcome,
+        voidedAt: record.voidedAt,
+        voidReason: record.voidReason,
 
         measurements: {
           suctionPressure: record.suctionPressure,

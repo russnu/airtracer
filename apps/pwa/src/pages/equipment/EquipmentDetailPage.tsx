@@ -26,7 +26,11 @@ import {
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
-import { serviceStatusBadgeVariant } from "../../components/service-records/serviceStatus";
+import {
+  serviceRecordState,
+  serviceRecordStateBadgeVariant,
+  serviceRecordStateLabel,
+} from "../../components/service-records/serviceOutcome";
 
 export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -253,7 +257,7 @@ export function EquipmentDetailPage() {
             </h2>
             <ServiceTimeline
               records={asset.serviceRecords ?? []}
-              getStatus={(record: ServiceRecord) => record.status}
+              getState={(record: ServiceRecord) => serviceRecordState(record)}
               emptyState={
                 <EmptyState
                   title="No service records"
@@ -271,10 +275,12 @@ export function EquipmentDetailPage() {
                         {record.serviceType}
                       </p>
                       <Badge
-                        variant={serviceStatusBadgeVariant(record.status)}
+                        variant={serviceRecordStateBadgeVariant(
+                          serviceRecordState(record),
+                        )}
                         className="shrink-0"
                       >
-                        {record.status}
+                        {serviceRecordStateLabel(serviceRecordState(record))}
                       </Badge>
                     </div>
                     {record.description && (

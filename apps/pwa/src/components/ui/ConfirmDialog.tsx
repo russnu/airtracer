@@ -13,6 +13,8 @@ interface ConfirmDialogProps {
   confirmPhrase?: string;
   /** Destructive actions use "danger" (the default). */
   tone?: 'danger' | 'primary';
+  /** Hides Cancel for dialogs with a single acknowledgement button. */
+  hideCancel?: boolean;
   isConfirming?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   confirmLabel,
   confirmPhrase,
   tone = 'danger',
+  hideCancel = false,
   isConfirming = false,
   onConfirm,
   onCancel,
@@ -87,9 +90,11 @@ export function ConfirmDialog({
 
         <div className="flex flex-wrap justify-end gap-2 pt-2">
           {actions}
-          <Button type="button" variant="secondary" onClick={handleCancel}>
-            Cancel
-          </Button>
+          {!hideCancel && (
+            <Button type="button" variant="secondary" onClick={handleCancel}>
+              Cancel
+            </Button>
+          )}
           <Button
             type="button"
             variant={tone}

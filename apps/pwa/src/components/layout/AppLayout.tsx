@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { InstallAppButton } from "../InstallAppButton";
 import { OfflineBanner } from "../OfflineBanner";
 import { SyncStatusIndicator } from "../offline/SyncStatusIndicator";
 import { Button } from "../ui/Button";
@@ -136,6 +137,7 @@ export function AppLayout() {
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
               <div className="relative flex items-center gap-4">
                 <SyncStatusIndicator />
+                <InstallAppButton variant="header" />
                 <span className="text-sm font-medium text-primary-700">
                   {user?.firstName} {user?.lastName}
                 </span>
@@ -229,6 +231,8 @@ export function AppLayout() {
                 </div>
               </div>
               <div className="mt-3 space-y-1">
+                {/* The menu stays open so the instructions dialog stays mounted. */}
+                <InstallAppButton variant="menu" />
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

@@ -18,6 +18,8 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,json,png}"],
+        // Manifest screenshots are only shown in the install dialog.
+        globIgnores: ["**/screenshots/**"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,

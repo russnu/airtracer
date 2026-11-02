@@ -2,9 +2,9 @@
   "name": "AirTracer — Digital Service Passport",
   "short_name": "AirTracer",
   "description": "QR-enabled Digital Service Passport Platform for HVAC maintenance records",
+  "id": "/",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#f8fafc",
   "theme_color": "#0f172a",
   "icons": [
@@ -25,6 +25,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/passport-narrow.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Equipment passport with service history"
+    },
+    {
+      "src": "/screenshots/passport-wide.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Equipment passport with service history"
     }
   ]
 }

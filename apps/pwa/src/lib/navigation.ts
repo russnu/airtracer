@@ -1,19 +1,51 @@
+import { canAccess, HOME_PATH, isPublicPath } from './routeAccess';
+
 /** Pages a user should never be sent back to after signing in. */
 const AUTH_PATHS = ['/login', '/register'];
 
 /**
- * Reads the in-app path a user was sent away from (`state.from`, set when
- * redirecting to /login) and returns it if it is safe to navigate to.
- * Accepts a path string or a location-like `{ pathname, search, hash }`.
- * Anything else, including other origins and the auth pages themselves,
- * returns the fallback.
+ * State passed to /login. `from` is the page to return to. `userId` is set when
+ * a session expired, so only that account returns there. `fallbackFrom` is
+ * tried when `from` is not allowed for the account that signs in.
  */
-export function getReturnPath(state: unknown, fallback = '/dashboard'): string {
-  if (typeof state !== 'object' || state === null || !('from' in state)) {
-    return fallback;
+export interface ReturnState {
+  from: unknown;
+  userId?: string;
+  fallbackFrom?: string;
+}
+
+/**
+ * Picks the page to open after signing in. A saved page is used only when
+ * it is safe, the user's role may open it, and, if it was saved when another
+ * account's session expired, it is public. Otherwise the user goes home.
+ */
+export function resolvePostLoginPath(
+  state: unknown,
+  user: { id: string; roles: readonly string[] },
+): string {
+  if (typeof state !== 'object' || state === null) {
+    return HOME_PATH;
   }
 
-  const from = (state as { from: unknown }).from;
+  const { from, userId, fallbackFrom } = state as Partial<ReturnState>;
+  const savedForOtherUser = typeof userId === 'string' && userId !== user.id;
+
+  for (const candidate of [from, fallbackFrom]) {
+    const path = toSafePath(candidate);
+    if (!path) continue;
+
+    const pathname = path.split(/[?#]/)[0];
+    if (savedForOtherUser && !isPublicPath(pathname)) continue;
+    if (canAccess(pathname, user.roles)) return path;
+  }
+  return HOME_PATH;
+}
+
+/**
+ * Accepts a path string or a location-like `{ pathname, search, hash }` and
+ * returns it as a path, or null if it leaves the app or is an auth page.
+ */
+function toSafePath(from: unknown): string | null {
   let path: string | null = null;
   if (typeof from === 'string') {
     path = from;
@@ -32,12 +64,12 @@ export function getReturnPath(state: unknown, fallback = '/dashboard'): string {
   }
 
   if (!path || !isSameOriginPath(path)) {
-    return fallback;
+    return null;
   }
 
   const pathname = path.split(/[?#]/)[0];
   if (AUTH_PATHS.includes(pathname)) {
-    return fallback;
+    return null;
   }
 
   return path;

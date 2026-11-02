@@ -34,7 +34,8 @@ export function AppLayout() {
 
   const finishLogout = async () => {
     await logout();
-    navigate("/login");
+    // Replace the signed-in page so Back from the login page cannot reopen it.
+    navigate("/login", { replace: true });
   };
 
   // Logging out with unsynced records is blocked until the user syncs them

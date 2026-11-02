@@ -1,12 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import type { ReturnState } from '../lib/navigation';
+import { canAccess, HOME_PATH } from '../lib/routeAccess';
 
-interface ProtectedRouteProps {
-  requiredRole?: string;
-}
-
-export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, hasRole } = useAuth();
+export function ProtectedRoute() {
+  const { isAuthenticated, isLoading, user, endReason, endedUserId } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
@@ -21,12 +19,22 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
   }
 
   if (!isAuthenticated) {
-    // The login page sends the user back here after signing in.
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    // After a deliberate logout the next sign-in starts at home, so the page
+    // is not saved; it may belong to a different account.
+    if (endReason === 'logout') {
+      return <Navigate to="/login" replace />;
+    }
+    // The login page sends the user back here after signing in. A page saved
+    // when a session expired is only reopened for that same account.
+    const state: ReturnState =
+      endReason === 'expired' && endedUserId
+        ? { from: location, userId: endedUserId }
+        : { from: location };
+    return <Navigate to="/login" replace state={state} />;
   }
 
-  if (requiredRole && !hasRole(requiredRole)) {
-    return <Navigate to="/dashboard" replace />;
+  if (!canAccess(location.pathname, user?.roles ?? [])) {
+    return <Navigate to={HOME_PATH} replace />;
   }
 
   return <Outlet />;

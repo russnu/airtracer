@@ -152,8 +152,8 @@ model Asset {
   model        String
   serialNumber String? @unique
   isActive     Boolean @default(true)
-  // Equipment Classification
 
+  // Equipment Classification
   equipmentTypeId String
   equipmentType   EquipmentType @relation(fields: [equipmentTypeId], references: [id])
 

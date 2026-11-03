@@ -4,10 +4,7 @@ import { createPortal } from "react-dom";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
-import {
-  PiDownloadSimpleBold,
-  PiPrinterBold,
-} from "react-icons/pi";
+import { PiDownloadSimpleBold, PiPrinterBold } from "react-icons/pi";
 import { assetsApi } from "../../lib/api-client";
 import { Alert, BackButton, Button, Card, Spinner } from "../../components/ui";
 import { buttonClasses } from "../../components/ui/buttonClasses";
@@ -93,7 +90,11 @@ function QrLabel({ asset, url, size, cutLine, svgRef }: QrLabelProps) {
         level={QR_LEVEL}
         marginSize={QR_MARGIN_MODULES}
         title={`QR code for ${name}`}
-        style={{ display: "block", width: `${size.qrMm}mm`, height: `${size.qrMm}mm` }}
+        style={{
+          display: "block",
+          width: `${size.qrMm}mm`,
+          height: `${size.qrMm}mm`,
+        }}
       />
       <div style={{ marginTop: `${LABEL_TEXT_GAP_MM}mm` }}>
         <p
@@ -114,7 +115,10 @@ function QrLabel({ asset, url, size, cutLine, svgRef }: QrLabelProps) {
 /** A ruler for checking that the printer did not scale the page. */
 function TestLine() {
   return (
-    <div className="text-black" style={{ marginTop: "8mm", width: `${TEST_LINE_MM}mm` }}>
+    <div
+      className="text-black"
+      style={{ marginTop: "8mm", width: `${TEST_LINE_MM}mm` }}
+    >
       <div
         style={{
           height: "2mm",
@@ -243,7 +247,10 @@ export function EquipmentLabelPage() {
       <div className="min-h-screen bg-primary-50">
         {header}
         <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 space-y-4">
-          <Alert variant={error ? "error" : "warning"} title="Can't print a label">
+          <Alert
+            variant={error ? "error" : "warning"}
+            title="Can't print a label"
+          >
             {unavailable}
           </Alert>
           <Link to={backPath} className={buttonClasses("outline")}>
@@ -279,11 +286,16 @@ export function EquipmentLabelPage() {
     }
     setIsPreparingPng(true);
     try {
-      const png = await svgToPng(svgRef.current, mmToPixels(size.qrMm, PNG_DPI));
+      const png = await svgToPng(
+        svgRef.current,
+        mmToPixels(size.qrMm, PNG_DPI),
+      );
       download(png, labelFileName(asset.brand, asset.model, size.qrMm, "png"));
     } catch (err) {
       console.error("AirTracer: PNG export failed.", err);
-      setDownloadError("Could not create the PNG. Try the SVG download instead.");
+      setDownloadError(
+        "Could not create the PNG. Try the SVG download instead.",
+      );
     } finally {
       setIsPreparingPng(false);
     }
@@ -291,7 +303,12 @@ export function EquipmentLabelPage() {
 
   const printArea = (
     <div className="hidden print:block">
-      <QrLabel asset={asset} url={qrCode.url} size={size} cutLine={paper === "sheet"} />
+      <QrLabel
+        asset={asset}
+        url={qrCode.url}
+        size={size}
+        cutLine={paper === "sheet"}
+      />
       {paper === "sheet" && <TestLine />}
     </div>
   );

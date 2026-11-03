@@ -8,14 +8,42 @@ Verified contracts for the endpoints below, taken from the NestJS controllers, D
 - Request bodies are validated by a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`). A body with unknown fields or wrongly typed values is rejected with **400**, and `message` is an array of validation errors.
 - Error responses use the NestJS shape: `{ statusCode, message, error? }`.
 - A missing, invalid, or expired token returns **401**. A valid token without the required role returns **403**.
+- The roles are `OWNER` and `TECHNICIAN`. A user may hold both and passes a role check when they hold any of the required roles. Roles are read from the database on each request, not from the token.
+
+## Auth
+
+### `POST /auth/register` (public)
+
+`role` must be `OWNER` or `TECHNICIAN`; any other value, including `ADMIN`, returns **400**. Returns `{ accessToken, user }`, where `user` is `{ id, email, firstName, lastName, roles: string[] }`.
+
+### `POST /auth/me/roles`
+
+Body: `{ "role": "OWNER" | "TECHNICIAN" }`. **Role:** any signed-in user. Adds the role to the signed-in account; the user is taken from the token. Returns **200** with the same `user` shape as `GET /auth/me`. Adding a role the user already holds returns 200 and changes nothing. There is no way to remove a role. Other role values return **400**; no token returns **401**. The token does not change. Online only.
 
 ## Assets
 
 ### `GET /assets` and `GET /assets/:id` (`OWNER`)
 
-Return only the signed-in owner's assets, with `equipmentType` and `qrCode`. `GET /assets/:id` also includes `serviceRecords`, newest `serviceDate` first, and returns 404 for an asset that does not exist or belongs to another owner.
+Return only the signed-in owner's assets, with `qrCode`. `equipmentType` is a string value of the equipment type enum (see below). `GET /assets/:id` also includes `serviceRecords`, newest `serviceDate` first, and returns 404 for an asset that does not exist or belongs to another owner.
 
 `qrCode` is `null` or `{ id, token, assetId, isActive, generatedAt, createdAt, updatedAt, url }`. `url` is the passport URL `${QR_BASE_URL}/qr/${token}`. Clients use it for QR images, printed labels, and shared links instead of building it from their own origin.
+
+### `POST /assets` and `PATCH /assets/:id` (`OWNER`)
+
+`equipmentType` is required on create and optional on update. It must be one of:
+
+| Value | Label |
+|---|---|
+| `WINDOW_TYPE` | Window-Type |
+| `WALL_MOUNTED_SPLIT` | Wall-Mounted Split-Type |
+| `FLOOR_MOUNTED_SPLIT` | Floor-Mounted Split-Type |
+| `CEILING_CASSETTE` | Ceiling Cassette |
+| `CEILING_SUSPENDED` | Ceiling Suspended |
+| `DUCTED_SPLIT` | Ducted Split-Type |
+| `PORTABLE` | Portable |
+| `PACKAGE_TYPE` | Package-Type |
+
+Any other value, or a missing value on create, returns **400**. The labels live in the PWA (`src/lib/equipmentType.ts`); the API returns only the value. The former `equipmentTypeId` field is rejected as an unknown field.
 
 ## Service records
 
@@ -102,7 +130,7 @@ Owners can add photos but cannot edit or delete any photo; editing and deleting 
 
 ### `GET /qr/:token` (public)
 
-Returns `{ url, asset, serviceHistory }` with only the approved public fields. `url` is the passport URL for sharing, built the same way as `qrCode.url`. Photo URLs in `serviceHistory[].photos` are signed and expire after one hour.
+Returns `{ url, asset, serviceHistory }` with only the approved public fields. `asset.equipmentType` is an equipment type value, not its label. `url` is the passport URL for sharing, built the same way as `qrCode.url`. Photo URLs in `serviceHistory[].photos` are signed and expire after one hour.
 
 Each `serviceHistory` item has `id`, `serviceDate`, `serviceType`, `description`, `outcome`, `voidedAt`, `voidReason`, `measurements`, `findings`, `recommendations`, `technician: { name } | null` and `photos`. Voided records are included and are identified by a non-null `voidedAt`.
 

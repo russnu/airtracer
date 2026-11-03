@@ -70,7 +70,7 @@ describe('QrService', () => {
     model: 'FTKF35',
     serialNumber: 'SN-001',
     isActive: true,
-    equipmentTypeId: 'equipment-type-1',
+    equipmentType: 'WALL_MOUNTED_SPLIT',
     refrigerant: 'R-32',
     capacity: 1.5,
     capacityUnit: 'HP',
@@ -281,10 +281,6 @@ describe('QrService', () => {
       isActive: true,
       asset: {
         ...asset,
-        equipmentType: {
-          id: 'equipment-type-1',
-          name: 'Air Conditioner',
-        },
         serviceRecords: [
           {
             id: 'service-1',
@@ -323,7 +319,6 @@ describe('QrService', () => {
         include: {
           asset: {
             include: {
-              equipmentType: true,
               serviceRecords: {
                 orderBy: {
                   serviceDate: 'desc',
@@ -345,7 +340,7 @@ describe('QrService', () => {
           brand: asset.brand,
           model: asset.model,
           serialNumber: asset.serialNumber,
-          equipmentType: 'Air Conditioner',
+          equipmentType: 'WALL_MOUNTED_SPLIT',
           installationDate: asset.installationDate,
           location: asset.location,
         },

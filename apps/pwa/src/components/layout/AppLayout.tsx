@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { AddRoleAction } from "../AddRoleAction";
 import { InstallAppButton } from "../InstallAppButton";
 import { OfflineBanner } from "../OfflineBanner";
 import { SyncStatusIndicator } from "../offline/SyncStatusIndicator";
@@ -12,10 +13,11 @@ import {
   countUnsynced,
   discardUnsyncedForUser,
 } from "../../lib/offline/outbox";
+import { navItemsFor } from "../../lib/navItems";
 
 export function AppLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isOnline = useOnlineStatus();
   const syncNow = useSyncNow();
@@ -92,20 +94,7 @@ export function AppLayout() {
     await finishLogout();
   };
 
-  const navItems = [];
-  if (hasRole("OWNER")) {
-    navItems.push({ name: "Dashboard", path: "/dashboard" });
-    navItems.push({ name: "My Equipments", path: "/equipment" });
-    navItems.push({ name: "Scan QR", path: "/scan" });
-  } else if (hasRole("TECHNICIAN")) {
-    navItems.push({ name: "Dashboard", path: "/dashboard" });
-    navItems.push({ name: "Scan QR", path: "/scan" });
-    navItems.push({ name: "Service Records", path: "/service-records" });
-    navItems.push({ name: "Pending sync", path: "/sync" });
-  } else if (hasRole("ADMIN")) {
-    navItems.push({ name: "Dashboard", path: "/dashboard" });
-    navItems.push({ name: "Users", path: "/users" });
-  }
+  const navItems = navItemsFor(user?.roles ?? []);
 
   return (
     <div className="min-h-screen bg-primary-50 flex flex-col">
@@ -148,6 +137,7 @@ export function AppLayout() {
               <div className="relative flex items-center gap-4">
                 <SyncStatusIndicator />
                 <InstallAppButton variant="header" />
+                <AddRoleAction className="text-sm text-primary-500 hover:text-primary-700 disabled:opacity-50 disabled:cursor-not-allowed" />
                 <span className="text-sm font-medium text-primary-700">
                   {user?.firstName} {user?.lastName}
                 </span>
@@ -280,6 +270,7 @@ export function AppLayout() {
               <div className="mt-3 space-y-1">
                 {/* The menu stays open so the instructions dialog stays mounted. */}
                 <InstallAppButton variant="menu" />
+                <AddRoleAction className="mx-2 block w-[calc(100%-1rem)] rounded-lg border-l-4 border-transparent px-3 py-2.5 text-left text-base font-medium text-primary-600 transition-colors hover:bg-accent-100 hover:text-brand-tertiary disabled:opacity-50 disabled:cursor-not-allowed" />
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);

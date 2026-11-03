@@ -1,17 +1,30 @@
-import { useState } from 'react';
-import type { FormEvent, ChangeEvent } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { assetsApi, ApiClientError } from '../../lib/api-client';
-import { Button, Input, Card, PageHeader, Alert, Spinner } from '../../components/ui';
-import type { CreateAssetPayload, Asset } from '../../types/api';
+import { useState } from "react";
+import type { FormEvent, ChangeEvent } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { assetsApi, ApiClientError } from "../../lib/api-client";
+import {
+  Button,
+  Input,
+  Select,
+  Card,
+  PageHeader,
+  Alert,
+  Spinner,
+  BackButton,
+} from "../../components/ui";
+import { EQUIPMENT_TYPE_OPTIONS } from "../../lib/equipmentType";
+import type { CreateAssetPayload, Asset } from "../../types/api";
 
 interface EquipmentFormFieldsProps {
   initialAsset?: Asset;
   isEditMode: boolean;
 }
 
-function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsProps) {
+function EquipmentFormFields({
+  initialAsset,
+  isEditMode,
+}: EquipmentFormFieldsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -20,27 +33,27 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
       return {
         brand: initialAsset.brand,
         model: initialAsset.model,
-        serialNumber: initialAsset.serialNumber || '',
-        equipmentTypeId: initialAsset.equipmentTypeId || '',
-        refrigerant: initialAsset.refrigerant || '',
+        serialNumber: initialAsset.serialNumber || "",
+        equipmentType: initialAsset.equipmentType,
+        refrigerant: initialAsset.refrigerant || "",
         capacity: initialAsset.capacity || undefined,
-        capacityUnit: initialAsset.capacityUnit || '',
+        capacityUnit: initialAsset.capacityUnit || "",
         installationDate: initialAsset.installationDate
-          ? new Date(initialAsset.installationDate).toISOString().split('T')[0]
-          : '',
-        location: initialAsset.location || '',
+          ? new Date(initialAsset.installationDate).toISOString().split("T")[0]
+          : "",
+        location: initialAsset.location || "",
       };
     }
     return {
-      brand: '',
-      model: '',
-      serialNumber: '',
-      equipmentTypeId: '',
-      refrigerant: '',
+      brand: "",
+      model: "",
+      serialNumber: "",
+      equipmentType: undefined,
+      refrigerant: "",
       capacity: undefined,
-      capacityUnit: '',
-      installationDate: '',
-      location: '',
+      capacityUnit: "",
+      installationDate: "",
+      location: "",
     };
   });
 
@@ -49,30 +62,31 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
   const createMutation = useMutation({
     mutationFn: (data: CreateAssetPayload) => assetsApi.create(data),
     onSuccess: (newAsset) => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
       navigate(`/equipment/${newAsset.id}`);
     },
     onError: (err) => {
       if (err instanceof ApiClientError) {
         setErrorMsg(err.message);
       } else {
-        setErrorMsg('An unexpected error occurred.');
+        setErrorMsg("An unexpected error occurred.");
       }
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Partial<CreateAssetPayload>) => assetsApi.update(initialAsset!.id, data),
+    mutationFn: (data: Partial<CreateAssetPayload>) =>
+      assetsApi.update(initialAsset!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['assets'] });
-      queryClient.invalidateQueries({ queryKey: ['assets', initialAsset!.id] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["assets", initialAsset!.id] });
       navigate(`/equipment/${initialAsset!.id}`);
     },
     onError: (err) => {
       if (err instanceof ApiClientError) {
         setErrorMsg(err.message);
       } else {
-        setErrorMsg('An unexpected error occurred.');
+        setErrorMsg("An unexpected error occurred.");
       }
     },
   });
@@ -81,15 +95,17 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!formData.brand || !formData.model || !formData.equipmentTypeId) {
-      setErrorMsg('Brand, model, and equipment type are required.');
+    if (!formData.brand || !formData.model || !formData.equipmentType) {
+      setErrorMsg("Brand, model, and equipment type are required.");
       return;
     }
 
     const payload = {
       ...formData,
       capacity: formData.capacity ? Number(formData.capacity) : undefined,
-      installationDate: formData.installationDate ? new Date(formData.installationDate).toISOString() : undefined,
+      installationDate: formData.installationDate
+        ? new Date(formData.installationDate).toISOString()
+        : undefined,
     } as CreateAssetPayload;
 
     if (isEditMode) {
@@ -99,7 +115,9 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
     }
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -143,13 +161,13 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
               placeholder="e.g. SN-987654321"
             />
 
-            <Input
-              label="Equipment Type ID"
-              name="equipmentTypeId"
-              value={formData.equipmentTypeId}
+            <Select
+              label="Equipment Type"
+              name="equipmentType"
+              value={formData.equipmentType ?? ""}
               onChange={handleChange}
-              placeholder="Equipment Type ID"
-              hint="Enter the registered equipment type ID"
+              options={EQUIPMENT_TYPE_OPTIONS}
+              placeholder="Select type..."
               required
             />
 
@@ -158,7 +176,7 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
               type="number"
               step="0.1"
               name="capacity"
-              value={formData.capacity ?? ''}
+              value={formData.capacity ?? ""}
               onChange={handleChange}
               placeholder="e.g. 1.5, 2.0"
             />
@@ -209,11 +227,15 @@ function EquipmentFormFields({ initialAsset, isEditMode }: EquipmentFormFieldsPr
           </div>
 
           <div className="flex justify-end space-x-4 pt-4 border-t border-primary-100">
-            <Link to={isEditMode ? `/equipment/${initialAsset?.id}` : '/equipment'}>
-              <Button type="button" variant="outline">Cancel</Button>
+            <Link
+              to={isEditMode ? `/equipment/${initialAsset?.id}` : "/equipment"}
+            >
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
             </Link>
             <Button type="submit" isLoading={isPending}>
-              {isEditMode ? 'Save Changes' : 'Register Equipment'}
+              {isEditMode ? "Save Changes" : "Register Equipment"}
             </Button>
           </div>
         </form>
@@ -226,8 +248,12 @@ export function EquipmentFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
 
-  const { data: asset, isLoading, error } = useQuery<Asset>({
-    queryKey: ['assets', id],
+  const {
+    data: asset,
+    isLoading,
+    error,
+  } = useQuery<Asset>({
+    queryKey: ["assets", id],
     queryFn: () => assetsApi.findOne(id!),
     enabled: isEditMode,
   });
@@ -236,14 +262,20 @@ export function EquipmentFormPage() {
     <div className="container mx-auto p-4 max-w-3xl space-y-6">
       <div className="mb-4">
         <Link
-          to={isEditMode ? `/equipment/${id}` : '/equipment'}
-          className="text-primary-500 hover:text-primary-800 text-sm font-medium transition-colors"
+          to={isEditMode ? `/equipment/${id}` : "/equipment"}
+          className="text-primary-500 hover:text-primary-800 text-sm font-medium transition-colors flex items-center gap-2"
         >
-          &larr; Back
+          <BackButton
+            fallback={isEditMode ? `/equipment/${id}` : "/equipment"}
+            label="Back to equipment"
+          />{" "}
+          Back
         </Link>
       </div>
 
-      <PageHeader title={isEditMode ? 'Edit Equipment' : 'Register New Equipment'} />
+      <PageHeader
+        title={isEditMode ? "Edit Equipment" : "Register New Equipment"}
+      />
 
       {isEditMode && isLoading ? (
         <div className="flex justify-center p-8">
@@ -255,7 +287,7 @@ export function EquipmentFormPage() {
         </Alert>
       ) : (
         <EquipmentFormFields
-          key={asset?.id ?? 'new'}
+          key={asset?.id ?? "new"}
           initialAsset={asset}
           isEditMode={isEditMode}
         />

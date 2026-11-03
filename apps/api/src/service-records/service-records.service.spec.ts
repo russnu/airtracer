@@ -58,7 +58,7 @@ describe('ServiceRecordsService', () => {
     model: 'FTKF35',
     serialNumber: 'SN-001',
     isActive: true,
-    equipmentTypeId: 'equipment-type-1',
+    equipmentType: 'WALL_MOUNTED_SPLIT',
     refrigerant: 'R-32',
     capacity: 1.5,
     capacityUnit: 'HP',

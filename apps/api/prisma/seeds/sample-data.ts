@@ -1,6 +1,4 @@
-import { ServiceOutcome } from '../../generated/prisma/client';
-
-import { EquipmentTypeName } from './equipment-type.seed';
+import { EquipmentType, ServiceOutcome } from '../../generated/prisma/client';
 
 // Mock demonstration data (PRD §7.4): every serial carries a DEMO marker and
 // all of it belongs to the demo owner and technician. Times are UTC.
@@ -25,7 +23,7 @@ export interface SampleServiceRecord {
 }
 
 export interface SampleAsset {
-  equipmentType: EquipmentTypeName;
+  equipmentType: EquipmentType;
   brand: string;
   model: string;
   serialNumber: string | null;
@@ -44,7 +42,7 @@ export interface SampleAsset {
 
 export const SAMPLE_ASSETS: SampleAsset[] = [
   {
-    equipmentType: 'Wall-Mounted Split-Type',
+    equipmentType: EquipmentType.WALL_MOUNTED_SPLIT,
     brand: 'Daikin',
     model: 'FTKF35',
     serialNumber: 'DAIKIN-DEMO-0001',
@@ -102,7 +100,7 @@ export const SAMPLE_ASSETS: SampleAsset[] = [
     deactivatedAt: null,
   },
   {
-    equipmentType: 'Window-Type',
+    equipmentType: EquipmentType.WINDOW_TYPE,
     brand: 'Carrier',
     model: 'Aura Inverter 1.0 HP',
     serialNumber: 'CARRIER-DEMO-0001',
@@ -160,7 +158,7 @@ export const SAMPLE_ASSETS: SampleAsset[] = [
     deactivatedAt: null,
   },
   {
-    equipmentType: 'Portable',
+    equipmentType: EquipmentType.PORTABLE,
     brand: 'LG',
     model: 'LP1419IVSM',
     serialNumber: 'LG-DEMO-0001',
@@ -197,7 +195,7 @@ export const SAMPLE_ASSETS: SampleAsset[] = [
   },
   {
     // No serial and no QR yet: shows the empty history and generate-QR states.
-    equipmentType: 'Ceiling Cassette',
+    equipmentType: EquipmentType.CEILING_CASSETTE,
     brand: 'Daikin',
     model: 'FCFC71',
     serialNumber: null,

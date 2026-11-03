@@ -1,6 +1,6 @@
 // ===== Enums =====
 
-export type RoleName = 'OWNER' | 'TECHNICIAN' | 'ADMIN';
+export type RoleName = 'OWNER' | 'TECHNICIAN';
 
 export type ServiceOutcome = 'RESOLVED' | 'FOLLOW_UP_NEEDED' | 'UNABLE_TO_COMPLETE';
 
@@ -25,7 +25,7 @@ export interface RegisterPayload {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
-  role: 'OWNER' | 'TECHNICIAN';
+  role: RoleName;
 }
 
 export interface LoginPayload {
@@ -35,14 +35,15 @@ export interface LoginPayload {
 
 // ===== Equipment Types =====
 
-export interface EquipmentType {
-  id: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+export type EquipmentType =
+  | 'WINDOW_TYPE'
+  | 'WALL_MOUNTED_SPLIT'
+  | 'FLOOR_MOUNTED_SPLIT'
+  | 'CEILING_CASSETTE'
+  | 'CEILING_SUSPENDED'
+  | 'DUCTED_SPLIT'
+  | 'PORTABLE'
+  | 'PACKAGE_TYPE';
 
 // ===== Assets =====
 
@@ -64,7 +65,6 @@ export interface Asset {
   model: string;
   serialNumber: string | null;
   isActive: boolean;
-  equipmentTypeId: string;
   equipmentType: EquipmentType;
   refrigerant: string | null;
   capacity: number | null;
@@ -82,7 +82,7 @@ export interface CreateAssetPayload {
   brand: string;
   model: string;
   serialNumber?: string;
-  equipmentTypeId: string;
+  equipmentType: EquipmentType;
   refrigerant?: string;
   capacity?: number;
   capacityUnit?: string;
@@ -106,6 +106,7 @@ export interface PublicAsset {
   brand: string;
   model: string;
   serialNumber: string | null;
+  /** An EquipmentType; passports saved offline before the enum hold its label. */
   equipmentType: string;
   installationDate: string | null;
   location: string | null;

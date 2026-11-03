@@ -11,6 +11,7 @@ import type {
   AuthResponse,
   LoginPayload,
   RegisterPayload,
+  RoleName,
   UserResponse,
 } from '../types/api';
 import {
@@ -54,7 +55,9 @@ interface AuthContextValue extends AuthState {
   logout: () => Promise<void>;
   /** Ends the session after the API rejected the token (HTTP 401). */
   handleUnauthorized: () => Promise<void>;
-  hasRole: (role: string) => boolean;
+  /** Adds a role to the signed-in account. Online only. */
+  addRole: (role: RoleName) => Promise<void>;
+  hasRole: (role: RoleName) => boolean;
 }
 
 function signedOut(
@@ -282,8 +285,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(signedOut('expired', userId));
   }, [userId, queryClient]);
 
+  // The token is unchanged: the API reads roles from the database on every
+  // request, so only the profile and its offline snapshot need updating.
+  const addRole = useCallback(async (role: RoleName) => {
+    const user = await authApi.addRole(role);
+    await saveSnapshot(user);
+    setState(signedIn(user));
+  }, []);
+
   const hasRole = useCallback(
-    (role: string) => {
+    (role: RoleName) => {
       return state.user?.roles.includes(role) ?? false;
     },
     [state.user],
@@ -296,9 +307,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       handleUnauthorized,
+      addRole,
       hasRole,
     }),
-    [state, login, register, logout, handleUnauthorized, hasRole],
+    [state, login, register, logout, handleUnauthorized, addRole, hasRole],
   );
 
   return <AuthContext value={value}>{children}</AuthContext>;

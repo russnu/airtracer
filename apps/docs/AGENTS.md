@@ -87,11 +87,12 @@ Inspect the existing storage abstraction and configuration before changing uploa
 
 AirTracer maintains a persistent, equipment-centered maintenance history for AC units.
 
-The main roles are:
+The roles are:
 
 - `OWNER`
 - `TECHNICIAN`
-- `ADMIN`
+
+An account may hold both. There is no `ADMIN` role; do not reintroduce one or add in-app user management without explicit approval.
 
 Core workflows include account authentication, equipment registration, QR identification, digital equipment passports, service records, diagnostic measurements, findings, recommendations, and supporting photographs.
 
@@ -230,7 +231,8 @@ The backend uses JWT authentication and Argon2 password hashing.
 Respect the existing authentication implementation, including its public-route decorators, role decorators, guards, and authenticated-user handling.
 
 - Never store plaintext passwords.
-- Never allow ordinary registration to assign the `ADMIN` role.
+- Only `OWNER` and `TECHNICIAN` can be assigned, at registration or through `POST /auth/me/roles`. Roles are never removed.
+- Authorization checks role names through `@Roles` and `RolesGuard`; there are no permission tables. A user passes when they hold any of the listed roles.
 - Enforce authorization on the backend, not only in React.
 - Validate resource access on every protected operation.
 - Do not trust a client-supplied user ID, role, owner ID, or technician ID as proof of identity.
@@ -247,6 +249,7 @@ Before changing database-related code, inspect the Prisma schema, generated clie
 - Avoid manually editing generated client output.
 - Do not reset, drop, or destructively modify a database without explicit authorization.
 - Consider existing records and migration compatibility before changing a field or relationship.
+- Equipment types are the `EquipmentType` Prisma enum, not a table. Adding one takes a migration (`ALTER TYPE ... ADD VALUE`) and its label in `apps/pwa/src/lib/equipmentType.ts`. Postgres cannot easily drop enum values, so do not remove or rename one without approval.
 - Do not rename or remove fields simply to match a preferred naming convention without evaluating the impact.
 
 ## 10. Equipment and Service-Record Integrity

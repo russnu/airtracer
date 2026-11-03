@@ -29,7 +29,6 @@ export async function seedSampleData(
   ids: {
     ownerId: string;
     technicianId: string;
-    equipmentTypeIds: Map<string, string>;
   },
 ): Promise<SampleDataResult> {
   const result: SampleDataResult = {
@@ -40,12 +39,6 @@ export async function seedSampleData(
   };
 
   for (const sample of SAMPLE_ASSETS) {
-    const equipmentTypeId = ids.equipmentTypeIds.get(sample.equipmentType);
-
-    if (!equipmentTypeId) {
-      throw new Error(`Equipment type "${sample.equipmentType}" not found`);
-    }
-
     const createdAt = new Date(sample.createdAt);
 
     const asset = await tx.asset.create({
@@ -53,7 +46,7 @@ export async function seedSampleData(
         brand: sample.brand,
         model: sample.model,
         serialNumber: sample.serialNumber,
-        equipmentTypeId,
+        equipmentType: sample.equipmentType,
         refrigerant: sample.refrigerant,
         capacity: sample.capacity,
         capacityUnit: sample.capacityUnit,
@@ -80,7 +73,7 @@ export async function seedSampleData(
               brand: asset.brand,
               model: asset.model,
               serialNumber: asset.serialNumber,
-              equipmentTypeId: asset.equipmentTypeId,
+              equipmentType: asset.equipmentType,
               refrigerant: asset.refrigerant,
               capacity: asset.capacity,
               capacityUnit: asset.capacityUnit,

@@ -6,10 +6,6 @@ import { RoleName } from '../roles/enums/role-name.enum';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
   //-------------------------------------------------------------//
-  async findAll() {
-    return this.prisma.user.findMany();
-  }
-  //-------------------------------------------------------------//
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
       where: { email },
@@ -64,6 +60,30 @@ export class UsersService {
         },
       },
 
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+  }
+  //-------------------------------------------------------------//
+  // Adding a role the user already holds changes nothing. Roles are never
+  // removed: assets and service records depend on the role that made them.
+  async addRole(userId: string, roleName: RoleName) {
+    const role = await this.prisma.role.findUniqueOrThrow({
+      where: { name: roleName },
+    });
+
+    await this.prisma.userRole.createMany({
+      data: [{ userId, roleId: role.id }],
+      skipDuplicates: true,
+    });
+
+    return this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
       include: {
         roles: {
           include: {

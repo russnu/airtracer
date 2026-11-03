@@ -37,18 +37,6 @@ export class AssetsService {
   }
   //-------------------------------------------------------------//
   async create(ownerId: string, dto: CreateAssetDto) {
-    // Verify equipment type
-    const equipmentType = await this.prisma.equipmentType.findFirst({
-      where: {
-        id: dto.equipmentTypeId,
-        isActive: true,
-      },
-    });
-
-    if (!equipmentType) {
-      throw new NotFoundException('Equipment type not found or is inactive');
-    }
-
     // Check serial number only if provided
     if (dto.serialNumber) {
       const existingAsset = await this.prisma.asset.findUnique({
@@ -70,7 +58,7 @@ export class AssetsService {
           brand: dto.brand,
           model: dto.model,
           serialNumber: dto.serialNumber,
-          equipmentTypeId: dto.equipmentTypeId,
+          equipmentType: dto.equipmentType,
           refrigerant: dto.refrigerant,
           capacity: dto.capacity,
           capacityUnit: dto.capacityUnit,
@@ -79,9 +67,6 @@ export class AssetsService {
             : undefined,
           location: dto.location,
           ownerId,
-        },
-        include: {
-          equipmentType: true,
         },
       });
 
@@ -94,7 +79,7 @@ export class AssetsService {
             brand: asset.brand,
             model: asset.model,
             serialNumber: asset.serialNumber,
-            equipmentTypeId: asset.equipmentTypeId,
+            equipmentType: asset.equipmentType,
             refrigerant: asset.refrigerant,
             capacity: asset.capacity,
             capacityUnit: asset.capacityUnit,
@@ -116,7 +101,6 @@ export class AssetsService {
         ownerId,
       },
       include: {
-        equipmentType: true,
         qrCode: true,
       },
       orderBy: {
@@ -134,7 +118,6 @@ export class AssetsService {
         ownerId,
       },
       include: {
-        equipmentType: true,
         qrCode: true,
         serviceRecords: {
           orderBy: {
@@ -164,21 +147,6 @@ export class AssetsService {
       throw new NotFoundException('Asset not found');
     }
 
-    // If equipment type is being changed,
-    // make sure the new type exists and is active.
-    if (dto.equipmentTypeId) {
-      const equipmentType = await this.prisma.equipmentType.findFirst({
-        where: {
-          id: dto.equipmentTypeId,
-          isActive: true,
-        },
-      });
-
-      if (!equipmentType) {
-        throw new NotFoundException('Equipment type not found or is inactive');
-      }
-    }
-
     // Check serial number uniqueness if changed
     if (dto.serialNumber && dto.serialNumber !== asset.serialNumber) {
       const existingAsset = await this.prisma.asset.findUnique({
@@ -203,7 +171,7 @@ export class AssetsService {
           brand: dto.brand,
           model: dto.model,
           serialNumber: dto.serialNumber,
-          equipmentTypeId: dto.equipmentTypeId,
+          equipmentType: dto.equipmentType,
           refrigerant: dto.refrigerant,
           capacity: dto.capacity,
           capacityUnit: dto.capacityUnit,
@@ -211,9 +179,6 @@ export class AssetsService {
             ? new Date(dto.installationDate)
             : undefined,
           location: dto.location,
-        },
-        include: {
-          equipmentType: true,
         },
       });
 
@@ -246,10 +211,10 @@ export class AssetsService {
         };
       }
 
-      if (asset.equipmentTypeId !== updatedAsset.equipmentTypeId) {
-        changes.equipmentTypeId = {
-          from: asset.equipmentTypeId,
-          to: updatedAsset.equipmentTypeId,
+      if (asset.equipmentType !== updatedAsset.equipmentType) {
+        changes.equipmentType = {
+          from: asset.equipmentType,
+          to: updatedAsset.equipmentType,
         };
       }
 

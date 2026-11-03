@@ -32,17 +32,18 @@ export class AuthService {
     };
   }
   //-------------------------------------------------------------//
+  async addRole(
+    user: AuthenticatedUser,
+    role: RoleName,
+  ): Promise<AuthResponseDto['user']> {
+    return this.me(await this.usersService.addRole(user.id, role));
+  }
+  //-------------------------------------------------------------//
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     const existingUser = await this.usersService.findByEmail(dto.email);
 
     if (existingUser) {
       throw new ConflictException('Email is already registered.');
-    }
-
-    if (dto.role === RoleName.ADMIN) {
-      throw new ForbiddenException(
-        'Administrator accounts cannot be created through public registration.',
-      );
     }
 
     const passwordHash = await argon2.hash(dto.password);

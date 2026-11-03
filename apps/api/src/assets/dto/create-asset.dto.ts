@@ -1,5 +1,7 @@
+import { EquipmentType } from '../../../generated/prisma/enums';
 import {
   IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -18,9 +20,8 @@ export class CreateAssetDto {
   @IsString()
   serialNumber?: string;
 
-  @IsString()
-  @IsNotEmpty()
-  equipmentTypeId!: string;
+  @IsEnum(EquipmentType)
+  equipmentType!: EquipmentType;
 
   @IsOptional()
   @IsString()

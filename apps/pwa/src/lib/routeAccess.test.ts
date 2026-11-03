@@ -3,7 +3,7 @@ import { canAccess, isPublicPath } from './routeAccess';
 
 describe('canAccess', () => {
   it('lets every signed-in role open the shared pages', () => {
-    for (const roles of [['OWNER'], ['TECHNICIAN'], ['ADMIN']]) {
+    for (const roles of [['OWNER'], ['TECHNICIAN'], ['OWNER', 'TECHNICIAN']]) {
       expect(canAccess('/dashboard', roles)).toBe(true);
       expect(canAccess('/scan', roles)).toBe(true);
     }
@@ -19,7 +19,7 @@ describe('canAccess', () => {
     ]) {
       expect(canAccess(path, ['OWNER'])).toBe(true);
       expect(canAccess(path, ['TECHNICIAN'])).toBe(false);
-      expect(canAccess(path, ['ADMIN'])).toBe(false);
+      expect(canAccess(path, ['OWNER', 'TECHNICIAN'])).toBe(true);
     }
   });
 
@@ -33,7 +33,7 @@ describe('canAccess', () => {
   it('lets owners and technicians view a service record', () => {
     expect(canAccess('/service-records/r1', ['OWNER'])).toBe(true);
     expect(canAccess('/service-records/r1', ['TECHNICIAN'])).toBe(true);
-    expect(canAccess('/service-records/r1', ['ADMIN'])).toBe(false);
+    expect(canAccess('/service-records/r1', [])).toBe(false);
   });
 
   it('accepts any matching role', () => {
@@ -45,7 +45,8 @@ describe('canAccess', () => {
   });
 
   it('rejects unknown paths and users without roles', () => {
-    expect(canAccess('/users', ['ADMIN'])).toBe(false);
+    expect(canAccess('/users', ['OWNER', 'TECHNICIAN'])).toBe(false);
+    expect(canAccess('/service-records', ['UNKNOWN'])).toBe(false);
     expect(canAccess('/equipment/a1/extra', ['OWNER'])).toBe(false);
     expect(canAccess('/equipment', [])).toBe(false);
   });

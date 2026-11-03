@@ -1,14 +1,11 @@
 import { Prisma } from '../../generated/prisma/client';
 
-import { EQUIPMENT_TYPES } from './equipment-type.seed';
-
 export interface ResetResult {
   servicePhotos: number;
   serviceRecords: number;
   auditLogs: number;
   qrCodes: number;
   assets: number;
-  equipmentTypes: number;
   orphanedStorageKeys: string[];
 }
 
@@ -27,23 +24,12 @@ export async function resetSampleData(
   const qrCodes = await tx.qRCode.deleteMany({});
   const assets = await tx.asset.deleteMany({});
 
-  // No assets remain, so types outside the canonical list (such as e2e
-  // leftovers) can be removed.
-  const equipmentTypes = await tx.equipmentType.deleteMany({
-    where: {
-      name: {
-        notIn: EQUIPMENT_TYPES.map((type) => type.name),
-      },
-    },
-  });
-
   return {
     servicePhotos: servicePhotos.count,
     serviceRecords: serviceRecords.count,
     auditLogs: auditLogs.count,
     qrCodes: qrCodes.count,
     assets: assets.count,
-    equipmentTypes: equipmentTypes.count,
     orphanedStorageKeys: photos.map((photo) => photo.storageKey),
   };
 }

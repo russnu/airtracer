@@ -32,6 +32,19 @@ enum Event {
   SERVICE_PHOTO_REMOVED
 }
 
+// Adding a type takes a migration and its label in the PWA's equipmentType.ts.
+// Postgres cannot drop enum values easily, so add values with care.
+enum EquipmentType {
+  WINDOW_TYPE
+  WALL_MOUNTED_SPLIT
+  FLOOR_MOUNTED_SPLIT
+  CEILING_CASSETTE
+  CEILING_SUSPENDED
+  DUCTED_SPLIT
+  PORTABLE
+  PACKAGE_TYPE
+}
+
 // The result of a service visit, recorded when the record is created.
 enum ServiceOutcome {
   RESOLVED
@@ -94,52 +107,11 @@ model Role {
   name        String  @unique
   description String?
 
-  users       UserRole[]
-  permissions RolePermission[]
+  users UserRole[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-//==========================================================================//
-model RolePermission {
-  roleId       String
-  permissionId String
-
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-}
-
-//==========================================================================//
-model Permission {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-
-  roles RolePermission[]
-
-  createdAt DateTime @default(now())
-}
-
-//==========================================================================//
-model EquipmentType {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  description String?
-
-  // Account Status
-  isActive Boolean @default(true)
-
-  // Relations
-  assets Asset[]
-
-  // Audit
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 //==========================================================================//
 model Asset {
   id String @id @default(cuid())
@@ -152,10 +124,9 @@ model Asset {
   model        String
   serialNumber String? @unique
   isActive     Boolean @default(true)
-  // Equipment Classification
 
-  equipmentTypeId String
-  equipmentType   EquipmentType @relation(fields: [equipmentTypeId], references: [id])
+  // Equipment Classification
+  equipmentType EquipmentType
 
   refrigerant  String?
   capacity     Float?
@@ -178,7 +149,7 @@ model Asset {
   updatedAt DateTime   @updatedAt
 
   @@index([ownerId])
-  @@index([equipmentTypeId])
+  @@index([equipmentType])
   @@index([brand, model])
 }
 

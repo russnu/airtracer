@@ -14,6 +14,7 @@ describe('AuthService', () => {
     findByEmail: jest.fn(),
     create: jest.fn(),
     updateLastLogin: jest.fn(),
+    addRole: jest.fn(),
   };
 
   const jwtServiceMock = {
@@ -221,5 +222,39 @@ describe('AuthService', () => {
     await expect(service.login(dto)).rejects.toThrow(
       new ForbiddenException('Your account has been deactivated.'),
     );
+  });
+
+  //-------------------------------------------------------------//
+  // ADD ROLE
+  //-------------------------------------------------------------//
+
+  it('should add a role to the signed-in user and return the profile', async () => {
+    usersServiceMock.addRole.mockResolvedValue({
+      id: 'user-123',
+      email: 'test@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      roles: [
+        { role: { name: RoleName.OWNER } },
+        { role: { name: RoleName.TECHNICIAN } },
+      ],
+    });
+
+    const result = await service.addRole(
+      { id: 'user-123' } as Parameters<AuthService['addRole']>[0],
+      RoleName.TECHNICIAN,
+    );
+
+    expect(usersServiceMock.addRole).toHaveBeenCalledWith(
+      'user-123',
+      RoleName.TECHNICIAN,
+    );
+    expect(result).toEqual({
+      id: 'user-123',
+      email: 'test@example.com',
+      firstName: 'John',
+      lastName: 'Doe',
+      roles: [RoleName.OWNER, RoleName.TECHNICIAN],
+    });
   });
 });

@@ -6,7 +6,7 @@ import * as argon2 from 'argon2';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RoleName } from '../src/roles/enums/role-name.enum';
-import { Event } from '../generated/prisma/enums';
+import { EquipmentType, Event } from '../generated/prisma/enums';
 
 describe('Assets E2E', () => {
   let app: INestApplication;
@@ -25,8 +25,7 @@ describe('Assets E2E', () => {
   let ownerToken: string;
   let technicianToken: string;
 
-  let equipmentTypeId: string;
-  let inactiveEquipmentTypeId: string;
+  const equipmentType = EquipmentType.WALL_MOUNTED_SPLIT;
 
   let ownerAssetId: string;
   let otherOwnerAssetId: string;
@@ -137,30 +136,6 @@ describe('Assets E2E', () => {
       .expect(200);
 
     technicianToken = technicianLogin.body.accessToken;
-
-    // ============================================================= //
-    // EQUIPMENT TYPES
-    // ============================================================= //
-
-    const equipmentType = await prisma.equipmentType.create({
-      data: {
-        name: `E2E Split Type ${Date.now()}`,
-        description: 'Equipment type for Assets E2E tests',
-        isActive: true,
-      },
-    });
-
-    equipmentTypeId = equipmentType.id;
-
-    const inactiveEquipmentType = await prisma.equipmentType.create({
-      data: {
-        name: `E2E Inactive Type ${Date.now()}`,
-        description: 'Inactive equipment type for Assets E2E tests',
-        isActive: false,
-      },
-    });
-
-    inactiveEquipmentTypeId = inactiveEquipmentType.id;
   });
 
   afterAll(async () => {
@@ -169,14 +144,6 @@ describe('Assets E2E', () => {
       where: {
         ownerId: {
           in: [ownerId, otherOwnerId],
-        },
-      },
-    });
-
-    await prisma.equipmentType.deleteMany({
-      where: {
-        id: {
-          in: [equipmentTypeId, inactiveEquipmentTypeId],
         },
       },
     });
@@ -209,7 +176,7 @@ describe('Assets E2E', () => {
           brand: 'Daikin',
           model: 'FTKF35',
           serialNumber,
-          equipmentTypeId,
+          equipmentType,
           refrigerant: 'R32',
           capacity: 1.5,
           capacityUnit: 'HP',
@@ -222,7 +189,7 @@ describe('Assets E2E', () => {
         brand: 'Daikin',
         model: 'FTKF35',
         serialNumber,
-        equipmentTypeId,
+        equipmentType,
         refrigerant: 'R32',
         capacity: 1.5,
         capacityUnit: 'HP',
@@ -267,14 +234,14 @@ describe('Assets E2E', () => {
         .send({
           brand: 'Mitsubishi',
           model: 'MSY-GR',
-          equipmentTypeId,
+          equipmentType,
         })
         .expect(201);
 
       expect(response.body).toMatchObject({
         brand: 'Mitsubishi',
         model: 'MSY-GR',
-        equipmentTypeId,
+        equipmentType,
         ownerId,
         isActive: true,
       });
@@ -287,37 +254,28 @@ describe('Assets E2E', () => {
     });
 
     // ASSET-003
-    it('ASSET-003: should reject an inactive equipment type', async () => {
-      const response = await request(app.getHttpServer())
+    it('ASSET-003: should reject a missing equipment type', async () => {
+      await request(app.getHttpServer())
         .post('/assets')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           brand: 'Daikin',
-          model: 'Inactive-Type',
-          equipmentTypeId: inactiveEquipmentTypeId,
+          model: 'Missing-Type',
         })
-        .expect(404);
-
-      expect(response.body.message).toBe(
-        'Equipment type not found or is inactive',
-      );
+        .expect(400);
     });
 
     // ASSET-004
-    it('ASSET-004: should reject a nonexistent equipment type', async () => {
-      const response = await request(app.getHttpServer())
+    it('ASSET-004: should reject an unknown equipment type', async () => {
+      await request(app.getHttpServer())
         .post('/assets')
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
           brand: 'Daikin',
           model: 'Invalid-Type',
-          equipmentTypeId: 'nonexistent-equipment-type',
+          equipmentType: 'Wall-Mounted Split-Type',
         })
-        .expect(404);
-
-      expect(response.body.message).toBe(
-        'Equipment type not found or is inactive',
-      );
+        .expect(400);
     });
 
     // ASSET-005
@@ -337,7 +295,7 @@ describe('Assets E2E', () => {
           brand: 'LG',
           model: 'Duplicate',
           serialNumber: asset?.serialNumber,
-          equipmentTypeId,
+          equipmentType,
         })
         .expect(409);
 
@@ -353,7 +311,7 @@ describe('Assets E2E', () => {
         .send({
           brand: 'Daikin',
           model: 'Unauthorized',
-          equipmentTypeId,
+          equipmentType,
         })
         .expect(401);
     });
@@ -366,7 +324,7 @@ describe('Assets E2E', () => {
         .send({
           brand: 'Daikin',
           model: 'Technician',
-          equipmentTypeId,
+          equipmentType,
         })
         .expect(403);
 
@@ -405,7 +363,7 @@ describe('Assets E2E', () => {
           brand: 'Other',
           model: 'Owner Asset',
           serialNumber: `OTHER-${Date.now()}`,
-          equipmentTypeId,
+          equipmentType,
           ownerId: otherOwnerId,
         },
       });
@@ -572,18 +530,14 @@ describe('Assets E2E', () => {
     });
 
     // ASSET-019
-    it('ASSET-019: should reject an inactive equipment type during update', async () => {
-      const response = await request(app.getHttpServer())
+    it('ASSET-019: should reject an unknown equipment type during update', async () => {
+      await request(app.getHttpServer())
         .patch(`/assets/${ownerAssetId}`)
         .set('Authorization', `Bearer ${ownerToken}`)
         .send({
-          equipmentTypeId: inactiveEquipmentTypeId,
+          equipmentType: 'SPLIT',
         })
-        .expect(404);
-
-      expect(response.body.message).toBe(
-        'Equipment type not found or is inactive',
-      );
+        .expect(400);
     });
 
     // ASSET-020
@@ -681,7 +635,7 @@ describe('Assets E2E', () => {
           brand: 'Deactivation',
           model: 'Test Asset',
           serialNumber: `DEACTIVATE-${Date.now()}`,
-          equipmentTypeId,
+          equipmentType,
           ownerId,
         },
       });
@@ -773,7 +727,7 @@ describe('Assets E2E', () => {
           brand: 'Delete',
           model: 'Test Asset',
           serialNumber: `DELETE-${Date.now()}`,
-          equipmentTypeId,
+          equipmentType,
           ownerId,
         },
       });

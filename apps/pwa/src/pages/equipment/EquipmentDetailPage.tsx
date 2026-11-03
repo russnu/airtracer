@@ -10,11 +10,11 @@ import {
   PageHeader,
   Alert,
   EmptyState,
+  BackButton,
 } from "../../components/ui";
 import { buttonClasses } from "../../components/ui/buttonClasses";
 import type { Asset, ServiceRecord } from "../../types/api";
 import {
-  PiArrowLeftBold,
   PiBarcodeBold,
   PiBuildingApartmentBold,
   PiCalendarPlusBold,
@@ -27,6 +27,7 @@ import {
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
 import { ShareLinkActions } from "../../components/ShareLinkActions";
+import { equipmentTypeLabel } from "../../lib/equipmentType";
 import { QR_LEVEL, QR_MARGIN_MODULES } from "../../lib/qrLabel";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 import {
@@ -113,9 +114,7 @@ export function EquipmentDetailPage() {
           to="/equipment"
           className="text-primary-500 hover:text-primary-800 text-sm font-medium transition-colors flex items-center gap-2"
         >
-          <span className="text-primary-500 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 p-2 rounded-full transition-colors">
-            <PiArrowLeftBold className="w-5 h-5 " />
-          </span>
+          <BackButton fallback="/equipment" label="Back to equipment" />
           Back to Equipments
         </Link>
       </div>
@@ -176,7 +175,7 @@ export function EquipmentDetailPage() {
                     Equipment Type
                   </p>
                   <p className="font-semibold text-primary-900 ">
-                    {asset.equipmentType?.name || "N/A"}
+                    {equipmentTypeLabel(asset.equipmentType)}
                   </p>
                 </div>
               </div>

@@ -15,7 +15,6 @@ import {
 import { buttonClasses } from "../../components/ui/buttonClasses";
 import type { Asset, ServiceRecord } from "../../types/api";
 import {
-  PiArrowLeftBold,
   PiBarcodeBold,
   PiBuildingApartmentBold,
   PiCalendarPlusBold,

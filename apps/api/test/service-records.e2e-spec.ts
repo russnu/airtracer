@@ -6,6 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RoleName } from '../src/roles/enums/role-name.enum';
+import { EquipmentType } from '../generated/prisma/enums';
 
 describe('Service records and photos E2E', () => {
   let app: INestApplication;
@@ -21,7 +22,7 @@ describe('Service records and photos E2E', () => {
   let otherTechnicianToken: string;
 
   const userIds: string[] = [];
-  let equipmentTypeId: string;
+  const equipmentType = EquipmentType.WALL_MOUNTED_SPLIT;
   let assetId: string;
   let inactiveAssetId: string;
 
@@ -72,11 +73,6 @@ describe('Service records and photos E2E', () => {
     await app.init();
     prisma = app.get(PrismaService);
 
-    const equipmentType = await prisma.equipmentType.create({
-      data: { name: `E2E Service Record Equipment ${runId}` },
-    });
-    equipmentTypeId = equipmentType.id;
-
     const owner = await register(RoleName.OWNER, 'owner');
     ownerToken = owner.token;
     otherOwnerToken = (await register(RoleName.OWNER, 'owner2')).token;
@@ -91,7 +87,7 @@ describe('Service records and photos E2E', () => {
         model: 'FTKF35',
         serialNumber: `E2E-SR-${runId}`,
         ownerId: owner.id,
-        equipmentTypeId,
+        equipmentType,
       },
     });
     assetId = asset.id;
@@ -102,7 +98,7 @@ describe('Service records and photos E2E', () => {
         model: 'X-Power',
         serialNumber: `E2E-SR-INACTIVE-${runId}`,
         ownerId: owner.id,
-        equipmentTypeId,
+        equipmentType,
         isActive: false,
       },
     });
@@ -122,9 +118,6 @@ describe('Service records and photos E2E', () => {
     // Audit logs cascade with the asset.
     await prisma.asset.deleteMany({ where: { id: { in: assetIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-    if (equipmentTypeId) {
-      await prisma.equipmentType.delete({ where: { id: equipmentTypeId } });
-    }
 
     await app.close();
     await prisma.$disconnect();

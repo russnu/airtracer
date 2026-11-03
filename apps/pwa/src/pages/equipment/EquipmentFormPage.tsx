@@ -6,12 +6,14 @@ import { assetsApi, ApiClientError } from "../../lib/api-client";
 import {
   Button,
   Input,
+  Select,
   Card,
   PageHeader,
   Alert,
   Spinner,
   BackButton,
 } from "../../components/ui";
+import { EQUIPMENT_TYPE_OPTIONS } from "../../lib/equipmentType";
 import type { CreateAssetPayload, Asset } from "../../types/api";
 
 interface EquipmentFormFieldsProps {
@@ -32,7 +34,7 @@ function EquipmentFormFields({
         brand: initialAsset.brand,
         model: initialAsset.model,
         serialNumber: initialAsset.serialNumber || "",
-        equipmentTypeId: initialAsset.equipmentTypeId || "",
+        equipmentType: initialAsset.equipmentType,
         refrigerant: initialAsset.refrigerant || "",
         capacity: initialAsset.capacity || undefined,
         capacityUnit: initialAsset.capacityUnit || "",
@@ -46,7 +48,7 @@ function EquipmentFormFields({
       brand: "",
       model: "",
       serialNumber: "",
-      equipmentTypeId: "",
+      equipmentType: undefined,
       refrigerant: "",
       capacity: undefined,
       capacityUnit: "",
@@ -93,7 +95,7 @@ function EquipmentFormFields({
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!formData.brand || !formData.model || !formData.equipmentTypeId) {
+    if (!formData.brand || !formData.model || !formData.equipmentType) {
       setErrorMsg("Brand, model, and equipment type are required.");
       return;
     }
@@ -159,13 +161,13 @@ function EquipmentFormFields({
               placeholder="e.g. SN-987654321"
             />
 
-            <Input
-              label="Equipment Type ID"
-              name="equipmentTypeId"
-              value={formData.equipmentTypeId}
+            <Select
+              label="Equipment Type"
+              name="equipmentType"
+              value={formData.equipmentType ?? ""}
               onChange={handleChange}
-              placeholder="Equipment Type ID"
-              hint="Enter the registered equipment type ID"
+              options={EQUIPMENT_TYPE_OPTIONS}
+              placeholder="Select type..."
               required
             />
 

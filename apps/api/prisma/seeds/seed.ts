@@ -8,10 +8,9 @@ import { assertTargetAllowed, describeTarget } from './guard';
 import { resetSampleData } from './reset.seed';
 import { seedRoles } from './roles.seed';
 import { seedUsers } from './users.seed';
-import { seedEquipmentTypes } from './equipment-type.seed';
 import { seedSampleData } from './sample-data.seed';
 
-// Seeds roles, equipment types and demo users, then replaces
+// Seeds roles and demo users, then replaces
 // all assets, QR codes, service records, photos and audit logs with the
 // sample data. Existing users and their roles are never changed.
 //
@@ -106,17 +105,15 @@ async function main() {
         console.log(
           `✓ Removed ${reset.assets} assets, ${reset.qrCodes} QR codes, ` +
             `${reset.serviceRecords} service records, ${reset.servicePhotos} photos, ` +
-            `${reset.auditLogs} audit logs, ${reset.equipmentTypes} unused equipment types`,
+            `${reset.auditLogs} audit logs`,
         );
 
         await seedRoles(tx);
         const users = await seedUsers(tx);
-        const equipmentTypeIds = await seedEquipmentTypes(tx);
 
         await seedSampleData(tx, {
           ownerId: users.owner,
           technicianId: users.technician,
-          equipmentTypeIds,
         });
 
         const usersAfter = await snapshotUsers(tx);

@@ -146,8 +146,6 @@ export class QrService {
       include: {
         asset: {
           include: {
-            equipmentType: true,
-
             serviceRecords: {
               orderBy: {
                 serviceDate: 'desc',
@@ -217,7 +215,7 @@ export class QrService {
         brand: qrCode.asset.brand,
         model: qrCode.asset.model,
         serialNumber: qrCode.asset.serialNumber,
-        equipmentType: qrCode.asset.equipmentType.name,
+        equipmentType: qrCode.asset.equipmentType,
         installationDate: qrCode.asset.installationDate,
         location: qrCode.asset.location,
       },

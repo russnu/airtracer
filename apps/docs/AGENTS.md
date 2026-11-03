@@ -249,6 +249,7 @@ Before changing database-related code, inspect the Prisma schema, generated clie
 - Avoid manually editing generated client output.
 - Do not reset, drop, or destructively modify a database without explicit authorization.
 - Consider existing records and migration compatibility before changing a field or relationship.
+- Equipment types are the `EquipmentType` Prisma enum, not a table. Adding one takes a migration (`ALTER TYPE ... ADD VALUE`) and its label in `apps/pwa/src/lib/equipmentType.ts`. Postgres cannot easily drop enum values, so do not remove or rename one without approval.
 - Do not rename or remove fields simply to match a preferred naming convention without evaluating the impact.
 
 ## 10. Equipment and Service-Record Integrity

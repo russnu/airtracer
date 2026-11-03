@@ -34,6 +34,7 @@ import {
   PiUserGear,
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
+import { equipmentTypeLabel } from "../../lib/equipmentType";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 import { Badge } from "../../components/ui/Badge";
 import {
@@ -290,7 +291,7 @@ export function PassportPage() {
                       Equipment Type
                     </p>
                     <p className="font-semibold text-primary-900">
-                      {asset.equipmentType}
+                      {equipmentTypeLabel(asset.equipmentType)}
                     </p>
                   </div>
                 </div>

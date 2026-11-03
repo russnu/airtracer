@@ -68,7 +68,7 @@ describe('AssetsController', () => {
         brand: 'Daikin',
         model: 'FTKF35',
         serialNumber: 'SN-001',
-        equipmentTypeId: 'equipment-type-1',
+        equipmentType: 'WALL_MOUNTED_SPLIT',
         installationDate: '2025-01-15',
         location: 'Living Room',
       } as CreateAssetDto;

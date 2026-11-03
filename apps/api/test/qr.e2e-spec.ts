@@ -5,6 +5,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RoleName } from '../src/roles/enums/role-name.enum';
+import { EquipmentType } from '../generated/prisma/enums';
 
 describe('QR E2E', () => {
   let app: INestApplication;
@@ -15,7 +16,6 @@ describe('QR E2E', () => {
   const ownerEmail = `e2e-qr-owner-${Date.now()}@example.com`;
   const otherOwnerEmail = `e2e-qr-other-owner-${Date.now()}@example.com`;
 
-  const equipmentTypeName = `E2E QR Equipment ${Date.now()}`;
 
   let ownerToken: string;
   let otherOwnerToken: string;
@@ -23,7 +23,7 @@ describe('QR E2E', () => {
   let ownerId: string;
   let otherOwnerId: string;
 
-  let equipmentTypeId: string;
+  const equipmentType = EquipmentType.WALL_MOUNTED_SPLIT;
 
   let assetId: string;
   let otherAssetId: string;
@@ -44,19 +44,6 @@ describe('QR E2E', () => {
     await app.init();
 
     prisma = app.get(PrismaService);
-
-    // --------------------------------------------------------- //
-    // Create test equipment type
-    // --------------------------------------------------------- //
-
-    const equipmentType = await prisma.equipmentType.create({
-      data: {
-        name: equipmentTypeName,
-        description: 'Equipment type created for QR E2E tests.',
-      },
-    });
-
-    equipmentTypeId = equipmentType.id;
 
     // --------------------------------------------------------- //
     // Create first OWNER
@@ -108,7 +95,7 @@ describe('QR E2E', () => {
         installationDate: new Date('2025-01-15'),
         location: 'Living Room',
         ownerId,
-        equipmentTypeId,
+        equipmentType,
       },
     });
 
@@ -126,7 +113,7 @@ describe('QR E2E', () => {
         installationDate: new Date('2025-03-10'),
         location: 'Bedroom',
         ownerId: otherOwnerId,
-        equipmentTypeId,
+        equipmentType,
       },
     });
 
@@ -147,7 +134,7 @@ describe('QR E2E', () => {
       },
     });
 
-    // Asset -> EquipmentType / User
+    // Asset -> User
     await prisma.asset.deleteMany({
       where: {
         id: {
@@ -162,13 +149,6 @@ describe('QR E2E', () => {
         id: {
           in: [ownerId, otherOwnerId],
         },
-      },
-    });
-
-    // EquipmentType
-    await prisma.equipmentType.delete({
-      where: {
-        id: equipmentTypeId,
       },
     });
 
@@ -195,7 +175,7 @@ describe('QR E2E', () => {
         asset: {
           id: assetId,
           ownerId,
-          equipmentTypeId,
+          equipmentType,
         },
       });
 
@@ -331,7 +311,7 @@ describe('QR E2E', () => {
       expect(response.body.asset).toMatchObject({
         id: assetId,
         ownerId,
-        equipmentTypeId,
+        equipmentType,
       });
     });
 
@@ -497,7 +477,7 @@ describe('QR E2E', () => {
         asset: {
           id: assetId,
           ownerId,
-          equipmentTypeId,
+          equipmentType,
         },
       });
 

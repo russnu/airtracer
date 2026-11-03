@@ -24,9 +24,26 @@ Body: `{ "role": "OWNER" | "TECHNICIAN" }`. **Role:** any signed-in user. Adds t
 
 ### `GET /assets` and `GET /assets/:id` (`OWNER`)
 
-Return only the signed-in owner's assets, with `equipmentType` and `qrCode`. `GET /assets/:id` also includes `serviceRecords`, newest `serviceDate` first, and returns 404 for an asset that does not exist or belongs to another owner.
+Return only the signed-in owner's assets, with `qrCode`. `equipmentType` is a string value of the equipment type enum (see below). `GET /assets/:id` also includes `serviceRecords`, newest `serviceDate` first, and returns 404 for an asset that does not exist or belongs to another owner.
 
 `qrCode` is `null` or `{ id, token, assetId, isActive, generatedAt, createdAt, updatedAt, url }`. `url` is the passport URL `${QR_BASE_URL}/qr/${token}`. Clients use it for QR images, printed labels, and shared links instead of building it from their own origin.
+
+### `POST /assets` and `PATCH /assets/:id` (`OWNER`)
+
+`equipmentType` is required on create and optional on update. It must be one of:
+
+| Value | Label |
+|---|---|
+| `WINDOW_TYPE` | Window-Type |
+| `WALL_MOUNTED_SPLIT` | Wall-Mounted Split-Type |
+| `FLOOR_MOUNTED_SPLIT` | Floor-Mounted Split-Type |
+| `CEILING_CASSETTE` | Ceiling Cassette |
+| `CEILING_SUSPENDED` | Ceiling Suspended |
+| `DUCTED_SPLIT` | Ducted Split-Type |
+| `PORTABLE` | Portable |
+| `PACKAGE_TYPE` | Package-Type |
+
+Any other value, or a missing value on create, returns **400**. The labels live in the PWA (`src/lib/equipmentType.ts`); the API returns only the value. The former `equipmentTypeId` field is rejected as an unknown field.
 
 ## Service records
 
@@ -113,7 +130,7 @@ Owners can add photos but cannot edit or delete any photo; editing and deleting 
 
 ### `GET /qr/:token` (public)
 
-Returns `{ url, asset, serviceHistory }` with only the approved public fields. `url` is the passport URL for sharing, built the same way as `qrCode.url`. Photo URLs in `serviceHistory[].photos` are signed and expire after one hour.
+Returns `{ url, asset, serviceHistory }` with only the approved public fields. `asset.equipmentType` is an equipment type value, not its label. `url` is the passport URL for sharing, built the same way as `qrCode.url`. Photo URLs in `serviceHistory[].photos` are signed and expire after one hour.
 
 Each `serviceHistory` item has `id`, `serviceDate`, `serviceType`, `description`, `outcome`, `voidedAt`, `voidReason`, `measurements`, `findings`, `recommendations`, `technician: { name } | null` and `photos`. Voided records are included and are identified by a non-null `voidedAt`.
 

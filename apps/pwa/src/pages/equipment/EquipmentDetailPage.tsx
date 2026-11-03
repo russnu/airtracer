@@ -28,6 +28,7 @@ import {
 } from "react-icons/pi";
 import { DataIcon } from "../../components/ui/DataIcon";
 import { ShareLinkActions } from "../../components/ShareLinkActions";
+import { equipmentTypeLabel } from "../../lib/equipmentType";
 import { QR_LEVEL, QR_MARGIN_MODULES } from "../../lib/qrLabel";
 import { ServiceTimeline } from "../../components/service-records/ServiceTimeline";
 import {
@@ -175,7 +176,7 @@ export function EquipmentDetailPage() {
                     Equipment Type
                   </p>
                   <p className="font-semibold text-primary-900 ">
-                    {asset.equipmentType?.name || "N/A"}
+                    {equipmentTypeLabel(asset.equipmentType)}
                   </p>
                 </div>
               </div>

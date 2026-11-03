@@ -19,7 +19,7 @@ function passport(assetId = 'asset-1', photoCount = 2): PublicPassportResponse {
       brand: 'Daikin',
       model: 'FTKF35',
       serialNumber: null,
-      equipmentType: 'Split',
+      equipmentType: 'WALL_MOUNTED_SPLIT',
       installationDate: null,
       location: 'Room 101',
     },

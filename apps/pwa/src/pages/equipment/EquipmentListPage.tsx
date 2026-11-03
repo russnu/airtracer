@@ -10,6 +10,7 @@ import {
   PageHeader,
   Alert,
 } from "../../components/ui";
+import { equipmentTypeLabel } from "../../lib/equipmentType";
 import type { Asset } from "../../types/api";
 import { PiCaretRightBold } from "react-icons/pi";
 
@@ -82,13 +83,11 @@ export function EquipmentListPage() {
                   </div>
 
                   <div className="space-y-2 text-sm text-primary-600">
-                    {asset.equipmentType && (
-                      <div>
-                        <Badge variant="info">
-                          {asset.equipmentType.name || "Equipment"}
-                        </Badge>
-                      </div>
-                    )}
+                    <div>
+                      <Badge variant="info">
+                        {equipmentTypeLabel(asset.equipmentType)}
+                      </Badge>
+                    </div>
                     {asset.serialNumber && (
                       <p>
                         <span className="font-medium">S/N:</span>{" "}

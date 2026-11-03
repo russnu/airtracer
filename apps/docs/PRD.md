@@ -166,6 +166,8 @@ Equipment information may include:
 
 Only fields supported by the backend data model should be submitted. Optional information must not be fabricated or required without justification.
 
+The equipment type is required and is chosen from a fixed list: Window-Type, Wall-Mounted Split-Type, Floor-Mounted Split-Type, Ceiling Cassette, Ceiling Suspended, Ducted Split-Type, Portable, and Package-Type. Users cannot enter their own type; adding one to the list is a code and database change.
+
 **FR-009 — View Equipment**
 
 Users must be able to view equipment information for assets they are authorized to access.

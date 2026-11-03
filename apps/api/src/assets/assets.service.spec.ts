@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ConfigService } from '@nestjs/config';
 
-import { Event } from '../../generated/prisma/enums';
+import { EquipmentType, Event } from '../../generated/prisma/enums';
 
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
@@ -22,9 +22,6 @@ describe('AssetsService', () => {
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-    },
-    equipmentType: {
-      findFirst: jest.fn(),
     },
     $transaction: jest.fn(),
   };
@@ -47,15 +44,6 @@ describe('AssetsService', () => {
   const ownerId = 'owner-1';
   const assetId = 'asset-1';
 
-  const equipmentType = {
-    id: 'equipment-type-1',
-    name: 'Air Conditioner',
-    description: 'Air conditioning equipment',
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
   const createdAsset = {
     id: assetId,
     brand: 'Daikin',
@@ -63,8 +51,7 @@ describe('AssetsService', () => {
     serialNumber: 'SN-001',
     isActive: true,
 
-    equipmentTypeId: equipmentType.id,
-    equipmentType,
+    equipmentType: EquipmentType.WALL_MOUNTED_SPLIT,
 
     refrigerant: 'R-32',
     capacity: 1.5,
@@ -122,7 +109,7 @@ describe('AssetsService', () => {
       brand: 'Daikin',
       model: 'FTKF35',
       serialNumber: 'SN-001',
-      equipmentTypeId: equipmentType.id,
+      equipmentType: EquipmentType.WALL_MOUNTED_SPLIT,
 
       refrigerant: 'R-32',
       capacity: 1.5,
@@ -132,21 +119,13 @@ describe('AssetsService', () => {
       location: 'Room 101',
     };
 
-    it('should create an asset with a valid active equipment type', async () => {
-      prismaMock.equipmentType.findFirst.mockResolvedValue(equipmentType);
+    it('should create an asset', async () => {
 
       prismaMock.asset.findUnique.mockResolvedValue(null);
 
       txMock.asset.create.mockResolvedValue(createdAsset);
 
       const result = await service.create(ownerId, createDto);
-
-      expect(prismaMock.equipmentType.findFirst).toHaveBeenCalledWith({
-        where: {
-          id: createDto.equipmentTypeId,
-          isActive: true,
-        },
-      });
 
       expect(prismaMock.asset.findUnique).toHaveBeenCalledWith({
         where: {
@@ -159,7 +138,7 @@ describe('AssetsService', () => {
           brand: createDto.brand,
           model: createDto.model,
           serialNumber: createDto.serialNumber,
-          equipmentTypeId: createDto.equipmentTypeId,
+          equipmentType: createDto.equipmentType,
 
           refrigerant: createDto.refrigerant,
           capacity: createDto.capacity,
@@ -168,9 +147,6 @@ describe('AssetsService', () => {
           installationDate: new Date(createDto.installationDate!),
           location: createDto.location,
           ownerId,
-        },
-        include: {
-          equipmentType: true,
         },
       });
 
@@ -183,7 +159,7 @@ describe('AssetsService', () => {
             brand: createdAsset.brand,
             model: createdAsset.model,
             serialNumber: createdAsset.serialNumber,
-            equipmentTypeId: createdAsset.equipmentTypeId,
+            equipmentType: createdAsset.equipmentType,
 
             refrigerant: createdAsset.refrigerant,
             capacity: createdAsset.capacity,
@@ -208,8 +184,6 @@ describe('AssetsService', () => {
         serialNumber: undefined,
       };
 
-      prismaMock.equipmentType.findFirst.mockResolvedValue(equipmentType);
-
       txMock.asset.create.mockResolvedValue({
         ...createdAsset,
         serialNumber: null,
@@ -228,8 +202,6 @@ describe('AssetsService', () => {
         installationDate: undefined,
       };
 
-      prismaMock.equipmentType.findFirst.mockResolvedValue(equipmentType);
-
       txMock.asset.create.mockResolvedValue({
         ...createdAsset,
         installationDate: null,
@@ -242,7 +214,7 @@ describe('AssetsService', () => {
           brand: dto.brand,
           model: dto.model,
           serialNumber: dto.serialNumber,
-          equipmentTypeId: dto.equipmentTypeId,
+          equipmentType: dto.equipmentType,
 
           refrigerant: dto.refrigerant,
           capacity: dto.capacity,
@@ -252,26 +224,10 @@ describe('AssetsService', () => {
           location: dto.location,
           ownerId,
         },
-        include: {
-          equipmentType: true,
-        },
       });
     });
 
-    it('should throw NotFoundException when the equipment type does not exist', async () => {
-      prismaMock.equipmentType.findFirst.mockResolvedValue(null);
-
-      await expect(service.create(ownerId, createDto)).rejects.toThrow(
-        new NotFoundException('Equipment type not found or is inactive'),
-      );
-
-      expect(prismaMock.asset.findUnique).not.toHaveBeenCalled();
-
-      expect(prismaMock.$transaction).not.toHaveBeenCalled();
-    });
-
     it('should throw ConflictException when the serial number already exists', async () => {
-      prismaMock.equipmentType.findFirst.mockResolvedValue(equipmentType);
 
       prismaMock.asset.findUnique.mockResolvedValue(existingAsset);
 
@@ -302,7 +258,6 @@ describe('AssetsService', () => {
           ownerId,
         },
         include: {
-          equipmentType: true,
           qrCode: true,
         },
         orderBy: {
@@ -347,7 +302,6 @@ describe('AssetsService', () => {
           ownerId,
         },
         include: {
-          equipmentType: true,
           qrCode: true,
         },
         orderBy: {
@@ -373,7 +327,6 @@ describe('AssetsService', () => {
           ownerId,
         },
         include: {
-          equipmentType: true,
           qrCode: true,
           serviceRecords: {
             orderBy: {
@@ -426,7 +379,7 @@ describe('AssetsService', () => {
       brand: 'Mitsubishi',
       model: 'MSY-GR35',
       serialNumber: 'SN-002',
-      equipmentTypeId: 'equipment-type-2',
+      equipmentType: EquipmentType.CEILING_CASSETTE,
 
       refrigerant: 'R-410A',
       capacity: 2,
@@ -441,25 +394,16 @@ describe('AssetsService', () => {
       brand: 'Mitsubishi',
       model: 'MSY-GR',
       serialNumber: 'SN-002',
-      equipmentTypeId: 'equipment-type-2',
+      equipmentType: EquipmentType.CEILING_CASSETTE,
       refrigerant: 'R-410A',
       capacity: 2,
       capacityUnit: 'HP',
       installationDate: new Date('2026-02-01T00:00:00.000Z'),
       location: 'Room 202',
-      equipmentType: {
-        ...equipmentType,
-        id: 'equipment-type-2',
-      },
     };
 
     it('should update an asset successfully and log the changes', async () => {
       prismaMock.asset.findFirst.mockResolvedValue(existingAsset);
-
-      prismaMock.equipmentType.findFirst.mockResolvedValue({
-        ...equipmentType,
-        id: 'equipment-type-2',
-      });
 
       prismaMock.asset.findUnique.mockResolvedValue(null);
 
@@ -475,7 +419,7 @@ describe('AssetsService', () => {
           brand: updateDto.brand,
           model: updateDto.model,
           serialNumber: updateDto.serialNumber,
-          equipmentTypeId: updateDto.equipmentTypeId,
+          equipmentType: updateDto.equipmentType,
 
           refrigerant: updateDto.refrigerant,
           capacity: updateDto.capacity,
@@ -483,9 +427,6 @@ describe('AssetsService', () => {
 
           installationDate: new Date(updateDto.installationDate!),
           location: updateDto.location,
-        },
-        include: {
-          equipmentType: true,
         },
       });
 
@@ -511,9 +452,9 @@ describe('AssetsService', () => {
                 to: updatedAsset.serialNumber,
               },
 
-              equipmentTypeId: {
-                from: existingAsset.equipmentTypeId,
-                to: updatedAsset.equipmentTypeId,
+              equipmentType: {
+                from: existingAsset.equipmentType,
+                to: updatedAsset.equipmentType,
               },
 
               refrigerant: {
@@ -551,8 +492,6 @@ describe('AssetsService', () => {
         new NotFoundException('Asset not found'),
       );
 
-      expect(prismaMock.equipmentType.findFirst).not.toHaveBeenCalled();
-
       expect(prismaMock.$transaction).not.toHaveBeenCalled();
     });
 
@@ -564,25 +503,8 @@ describe('AssetsService', () => {
       ).rejects.toThrow(new NotFoundException('Asset not found'));
     });
 
-    it('should throw NotFoundException when the new equipment type does not exist or is inactive', async () => {
-      prismaMock.asset.findFirst.mockResolvedValue(existingAsset);
-
-      prismaMock.equipmentType.findFirst.mockResolvedValue(null);
-
-      await expect(service.update(assetId, ownerId, updateDto)).rejects.toThrow(
-        new NotFoundException('Equipment type not found or is inactive'),
-      );
-
-      expect(prismaMock.$transaction).not.toHaveBeenCalled();
-    });
-
     it('should throw ConflictException when the new serial number already exists', async () => {
       prismaMock.asset.findFirst.mockResolvedValue(existingAsset);
-
-      prismaMock.equipmentType.findFirst.mockResolvedValue({
-        ...equipmentType,
-        id: updateDto.equipmentTypeId,
-      });
 
       prismaMock.asset.findUnique.mockResolvedValue({
         ...existingAsset,
@@ -607,11 +529,6 @@ describe('AssetsService', () => {
 
       prismaMock.asset.findFirst.mockResolvedValue(existingAsset);
 
-      prismaMock.equipmentType.findFirst.mockResolvedValue({
-        ...equipmentType,
-        id: dto.equipmentTypeId,
-      });
-
       txMock.asset.update.mockResolvedValue({
         ...existingAsset,
         ...dto,
@@ -625,7 +542,7 @@ describe('AssetsService', () => {
       expect(prismaMock.asset.findUnique).not.toHaveBeenCalled();
     });
 
-    it('should not verify equipment type when equipmentTypeId is not being changed', async () => {
+    it('should update when the equipment type is not provided', async () => {
       const dto: UpdateAssetDto = {
         brand: 'Updated Brand',
         model: existingAsset.model,
@@ -649,8 +566,6 @@ describe('AssetsService', () => {
 
       await service.update(assetId, ownerId, dto);
 
-      expect(prismaMock.equipmentType.findFirst).not.toHaveBeenCalled();
-
       expect(resultOrUndefined(txMock.asset.update)).toBeDefined();
     });
 
@@ -659,7 +574,7 @@ describe('AssetsService', () => {
         brand: existingAsset.brand,
         model: existingAsset.model,
         serialNumber: existingAsset.serialNumber,
-        equipmentTypeId: existingAsset.equipmentTypeId,
+        equipmentType: existingAsset.equipmentType,
 
         refrigerant: existingAsset.refrigerant,
         capacity: existingAsset.capacity,
@@ -670,8 +585,6 @@ describe('AssetsService', () => {
       };
 
       prismaMock.asset.findFirst.mockResolvedValue(existingAsset);
-
-      prismaMock.equipmentType.findFirst.mockResolvedValue(equipmentType);
 
       txMock.asset.update.mockResolvedValue(existingAsset);
 

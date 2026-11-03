@@ -40,7 +40,7 @@ Provide equipment owners and independent technicians with a practical, accessibl
 
 ## 2. Target Users and Roles
 
-AirTracer has three application roles: OWNER, TECHNICIAN, and ADMIN.
+AirTracer has two application roles: OWNER and TECHNICIAN. An account may hold both, for example a technician who also owns equipment. There is no administrator role; maintenance such as deactivating an account is done directly on the database by the system's maintainers.
 
 ### 2.1 Equipment Owner
 
@@ -68,18 +68,6 @@ Primary needs:
 - Upload supporting photographs.
 - Associate each service record with the authenticated technician.
 
-### 2.3 Administrator
-
-Administrators perform authorized administrative and account-management activities.
-
-Primary needs:
-
-- Access administrative functions explicitly supported by the system.
-- Manage users or account status when permitted.
-- Support platform oversight and appropriate record traceability.
-
-Administrative capabilities must follow the implemented authorization rules. Do not assume that every administrative feature is required merely because an ADMIN role exists.
-
 ---
 
 ## 3. Scope
@@ -103,7 +91,6 @@ The initial application should support:
 - Basic caching and appropriate offline handling.
 - Saving an equipment passport on a device for offline viewing (text only; photos require a connection).
 - Creating service records offline, saved on the device and synchronized automatically when reconnected (see §8.3).
-- Administrative functionality required by the approved requirements.
 
 ### 3.2 Out of Scope
 
@@ -117,7 +104,8 @@ Unless explicitly approved as a later requirement, do not implement:
 - Payment processing, technician marketplaces, or service booking.
 - GPS tracking or continuous technician location monitoring.
 - A native Android or iOS application separate from the PWA.
-- Guaranteed full offline operation with automatic synchronization of every type of data. Only the offline workflows listed in §3.1 are in scope; editing records, voiding records, photo uploads, and owner or administrative actions require a connection.
+- Guaranteed full offline operation with automatic synchronization of every type of data. Only the offline workflows listed in §3.1 are in scope; editing records, voiding records, photo uploads, adding a role, and owner actions require a connection.
+- An administrator role or in-app user management.
 - Features that have no support in the PRD or explicit development instructions.
 
 Measurements are entered manually by users. They must not be represented as automatically collected sensor readings.
@@ -134,7 +122,11 @@ Users must be able to create an account by providing the required registration i
 
 **FR-002 — Role Selection**
 
-Registration must support the intended OWNER and TECHNICIAN roles. Ordinary registration must never permit users to assign themselves the ADMIN role.
+Registration must let users choose the OWNER or TECHNICIAN role. No other role can be assigned.
+
+**FR-002A — Adding a Role**
+
+A signed-in user who holds one role must be able to add the other to the same account, so one person can both own equipment and service it. A role cannot be removed once added, because the equipment and service records created under it depend on it. Adding a role requires a connection.
 
 **FR-003 — Login**
 
@@ -293,7 +285,7 @@ File type, file size, storage access, and authorization must be validated accord
 
 **FR-031 — Role-Aware Dashboard**
 
-After login, users should see a dashboard appropriate to their role.
+After login, users should see a dashboard appropriate to their role. A user with both roles can switch between the owner and technician dashboards, and the navigation shows the pages of both roles.
 
 **FR-032 — Owner Dashboard**
 
@@ -311,15 +303,9 @@ Provide clear navigation between the dashboard, equipment views, QR scanning or 
 
 When a user has no registered equipment, no available service records, or no search results, explain the situation and provide an appropriate next action when possible.
 
-### 4.7 Administration
+### 4.7 Traceability
 
-**FR-036 — Administrative Access**
-
-Administrative interfaces and operations must be available only to authorized administrators.
-
-**FR-037 — User Management**
-
-Implement only the account-management capabilities approved for the project and supported by the backend.
+FR-036 (Administrative Access) and FR-037 (User Management) were removed with the ADMIN role. Their numbers are not reused.
 
 **FR-038 — Auditability**
 
@@ -563,7 +549,7 @@ The following criteria describe intended product behavior. They should be verifi
 - Users can register using permitted roles and log in.
 - Authentication errors are handled clearly.
 - Protected operations reject unauthorized requests.
-- Ordinary users cannot grant themselves administrative privileges.
+- Users can hold only the OWNER and TECHNICIAN roles, and can add the role they lack to their own account.
 
 ### Equipment
 
@@ -629,8 +615,7 @@ When implementing AirTracer, follow these rules:
 7. Implement QR code display, scanning, and passport access.
 8. Implement service history and service-record creation.
 9. Implement photo uploads and evidence display.
-10. Add administrative capabilities that are explicitly required.
-11. Verify authorization, responsive behavior, error handling, and PWA functionality.
+10. Verify authorization, responsive behavior, error handling, and PWA functionality.
 
 This sequence is a recommendation, not a claim that these features are already implemented.
 

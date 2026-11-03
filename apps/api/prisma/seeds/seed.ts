@@ -6,13 +6,12 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 import { assertTargetAllowed, describeTarget } from './guard';
 import { resetSampleData } from './reset.seed';
-import { seedPermissions } from './permissions.seed';
 import { seedRoles } from './roles.seed';
 import { seedUsers } from './users.seed';
 import { seedEquipmentTypes } from './equipment-type.seed';
 import { seedSampleData } from './sample-data.seed';
 
-// Seeds roles, permissions, equipment types and demo users, then replaces
+// Seeds roles, equipment types and demo users, then replaces
 // all assets, QR codes, service records, photos and audit logs with the
 // sample data. Existing users and their roles are never changed.
 //
@@ -110,7 +109,6 @@ async function main() {
             `${reset.auditLogs} audit logs, ${reset.equipmentTypes} unused equipment types`,
         );
 
-        await seedPermissions(tx);
         await seedRoles(tx);
         const users = await seedUsers(tx);
         const equipmentTypeIds = await seedEquipmentTypes(tx);

@@ -8,6 +8,17 @@ Verified contracts for the endpoints below, taken from the NestJS controllers, D
 - Request bodies are validated by a global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`). A body with unknown fields or wrongly typed values is rejected with **400**, and `message` is an array of validation errors.
 - Error responses use the NestJS shape: `{ statusCode, message, error? }`.
 - A missing, invalid, or expired token returns **401**. A valid token without the required role returns **403**.
+- The roles are `OWNER` and `TECHNICIAN`. A user may hold both and passes a role check when they hold any of the required roles. Roles are read from the database on each request, not from the token.
+
+## Auth
+
+### `POST /auth/register` (public)
+
+`role` must be `OWNER` or `TECHNICIAN`; any other value, including `ADMIN`, returns **400**. Returns `{ accessToken, user }`, where `user` is `{ id, email, firstName, lastName, roles: string[] }`.
+
+### `POST /auth/me/roles`
+
+Body: `{ "role": "OWNER" | "TECHNICIAN" }`. **Role:** any signed-in user. Adds the role to the signed-in account; the user is taken from the token. Returns **200** with the same `user` shape as `GET /auth/me`. Adding a role the user already holds returns 200 and changes nothing. There is no way to remove a role. Other role values return **400**; no token returns **401**. The token does not change. Online only.
 
 ## Assets
 

@@ -104,10 +104,10 @@ describe('Auth E2E', () => {
     });
 
     // AUTH-003
-    it('AUTH-003: should reject public ADMIN registration', async () => {
+    it('AUTH-003: should reject a role other than OWNER or TECHNICIAN', async () => {
       const adminEmail = `e2e-admin-${Date.now()}@example.com`;
 
-      const response = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .post('/auth/register')
         .send({
           email: adminEmail,
@@ -115,13 +115,9 @@ describe('Auth E2E', () => {
           firstName: 'Admin',
           lastName: 'User',
           phoneNumber: undefined,
-          role: RoleName.ADMIN,
+          role: 'ADMIN',
         })
-        .expect(403);
-
-      expect(response.body.message).toBe(
-        'Administrator accounts cannot be created through public registration.',
-      );
+        .expect(400);
 
       // Make sure the user wasn't created
       const user = await prisma.user.findUnique({
@@ -265,6 +261,69 @@ describe('Auth E2E', () => {
       await request(app.getHttpServer())
         .get('/auth/me')
         .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+  });
+
+  // ============================================================= //
+  // /auth/me/roles
+  // ============================================================= //
+
+  describe('POST /auth/me/roles', () => {
+    // AUTH-011
+    it('AUTH-011: should add the other role to the signed-in account', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/me/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ role: RoleName.TECHNICIAN })
+        .expect(200);
+
+      expect(response.body.email).toBe(registeredEmail);
+      expect(response.body.roles).toHaveLength(2);
+      expect(response.body.roles).toEqual(
+        expect.arrayContaining([RoleName.OWNER, RoleName.TECHNICIAN]),
+      );
+      expect(response.body).not.toHaveProperty('passwordHash');
+    });
+
+    // AUTH-012
+    it('AUTH-012: should leave a held role unchanged', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/me/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ role: RoleName.TECHNICIAN })
+        .expect(200);
+
+      expect(response.body.roles).toHaveLength(2);
+    });
+
+    // AUTH-013
+    it('AUTH-013: should let a user with both roles use both roles', async () => {
+      await request(app.getHttpServer())
+        .get('/assets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get('/service-records/mine')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+    });
+
+    // AUTH-014
+    it('AUTH-014: should reject a role other than OWNER or TECHNICIAN', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/me/roles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ role: 'ADMIN' })
+        .expect(400);
+    });
+
+    // AUTH-015
+    it('AUTH-015: should reject adding a role without a token', async () => {
+      await request(app.getHttpServer())
+        .post('/auth/me/roles')
+        .send({ role: RoleName.TECHNICIAN })
         .expect(401);
     });
   });

@@ -8,6 +8,7 @@ import type {
   PublicPassportResponse,
   QRCreateResponse,
   RegisterPayload,
+  RoleName,
   ServiceRecord,
   ServicePhotoWithUrl,
   TechnicianServiceRecord,
@@ -150,6 +151,14 @@ export const authApi = {
   me(): Promise<UserResponse> {
     return request('/auth/me');
   },
+
+  /** Adds a role to the signed-in account. Adding a held role changes nothing. */
+  addRole(role: RoleName): Promise<UserResponse> {
+    return request('/auth/me/roles', {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    });
+  },
 };
 
 // ===== Assets =====
@@ -288,14 +297,6 @@ export const servicePhotosApi = {
     return request(`/service-photo/${id}`, {
       method: 'DELETE',
     });
-  },
-};
-
-// ===== Users (Admin) =====
-
-export const usersApi = {
-  findAll(): Promise<UserResponse[]> {
-    return request('/users/');
   },
 };
 

@@ -94,35 +94,11 @@ model Role {
   name        String  @unique
   description String?
 
-  users       UserRole[]
-  permissions RolePermission[]
+  users UserRole[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-//==========================================================================//
-model RolePermission {
-  roleId       String
-  permissionId String
-
-  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-}
-
-//==========================================================================//
-model Permission {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-
-  roles RolePermission[]
-
-  createdAt DateTime @default(now())
-}
-
 //==========================================================================//
 model EquipmentType {
   id          String  @id @default(cuid())

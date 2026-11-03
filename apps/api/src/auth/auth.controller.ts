@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
+import { AddRoleDto } from './dto/add-role.dto';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -21,6 +22,13 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user);
+  }
+  //-------------------------------------------------------------//
+  // Any signed-in user may add the other role to their own account.
+  @HttpCode(HttpStatus.OK)
+  @Post('me/roles')
+  addRole(@CurrentUser() user: AuthenticatedUser, @Body() dto: AddRoleDto) {
+    return this.authService.addRole(user, dto.role);
   }
   //-------------------------------------------------------------//
   @Public()

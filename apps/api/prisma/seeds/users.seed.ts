@@ -4,13 +4,6 @@ import { Prisma } from '../../generated/prisma/client';
 import { RoleName } from '../../src/roles/enums/role-name.enum';
 
 export const DEMO_USERS = {
-  admin: {
-    email: 'admin@airtracer.local',
-    firstName: 'System',
-    lastName: 'Administrator',
-    phoneNumber: '09170000001',
-    role: RoleName.ADMIN,
-  },
   technician: {
     email: 'technician@airtracer.local',
     firstName: 'John',
@@ -38,7 +31,9 @@ export async function seedUsers(
   const ids = {} as Record<DemoUserKey, string>;
   let created = 0;
 
-  for (const key of Object.keys(DEMO_USERS) as DemoUserKey[]) {
+  const keys = Object.keys(DEMO_USERS) as DemoUserKey[];
+
+  for (const key of keys) {
     const { role: roleName, ...profile } = DEMO_USERS[key];
 
     const role = await tx.role.findUniqueOrThrow({
@@ -78,7 +73,7 @@ export async function seedUsers(
   }
 
   console.log(
-    `✓ Demo users ready (${created} created, ${3 - created} already existed)`,
+    `✓ Demo users ready (${created} created, ${keys.length - created} already existed)`,
   );
 
   return ids;

@@ -1,6 +1,6 @@
 // ===== Enums =====
 
-export type RoleName = 'OWNER' | 'TECHNICIAN' | 'ADMIN';
+export type RoleName = 'OWNER' | 'TECHNICIAN';
 
 export type ServiceOutcome = 'RESOLVED' | 'FOLLOW_UP_NEEDED' | 'UNABLE_TO_COMPLETE';
 
@@ -25,7 +25,7 @@ export interface RegisterPayload {
   firstName: string;
   lastName: string;
   phoneNumber?: string;
-  role: 'OWNER' | 'TECHNICIAN';
+  role: RoleName;
 }
 
 export interface LoginPayload {

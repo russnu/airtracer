@@ -1,98 +1,150 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# AirTracer API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The REST API for AirTracer. It handles accounts, equipment, QR codes, service records and photo uploads, and stores data in PostgreSQL and photos in Supabase Storage. The deployed API is hosted on Render.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+For an overview of the project, see the [root README](../../README.md).
 
-## Description
+## Stack
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+NestJS 11, TypeScript 5.9, Prisma 7 (with `@prisma/adapter-pg`), PostgreSQL, JWT authentication (Passport), Argon2 password hashing, and Supabase Storage.
 
-## Project setup
+## Environment variables
 
-```bash
-$ pnpm install
-```
+Copy `.env.example` to `.env` for development. For the end-to-end tests, copy `.env.test.example` to `.env.test`. That file must point to a separate local test database.
 
-## Compile and run the project
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `PORT` | Port the API listens on (default `3000`) |
+| `JWT_SECRET` | Secret used to sign access tokens. Use a long random value in production. |
+| `JWT_EXPIRES_IN` | How long an access token stays valid, for example `7d` |
+| `QR_BASE_URL` | PWA origin used in passport links (`<QR_BASE_URL>/qr/<token>`). These links are printed on QR labels, so in production use the long-term public PWA domain. |
+| `CORS_ORIGINS` | Comma-separated PWA origins allowed to call the API, for example `http://localhost:5173` |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_SECRET_KEY` | Supabase secret (service role) key. Server-only: never put it in the PWA. |
 
-```bash
-# development
-$ pnpm run start
+The API will not start if any variable except `PORT` is missing.
 
-# watch mode
-$ pnpm run start:dev
+## Supabase storage
 
-# production mode
-$ pnpm run start:prod
-```
+1. In your Supabase project, open **Storage** and create a bucket named `service-photos`.
+2. Leave the bucket **private**. The API gives out photo links that expire after one hour.
+3. Copy the project URL and the secret (service role) key from the project settings into `SUPABASE_URL` and `SUPABASE_SECRET_KEY`.
 
-## Run tests
+## Database
+
+The Prisma client is generated into `generated/prisma` and is not committed. Generate it after installing dependencies and after every schema change:
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm --filter api db:generate
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Apply the migrations to the database in `.env`:
 
 ```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
+pnpm --filter api db:migrate
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+| Script | Database | What it does |
+|---|---|---|
+| `db:generate` | none | Generates the Prisma client |
+| `db:migrate` | `.env` | Applies pending migrations |
+| `db:status` | `.env` | Shows which migrations are applied |
+| `db:studio` | `.env` | Opens Prisma Studio |
+| `db:migration:new` | `.env.test` | Creates a new migration from schema changes, without applying it |
+| `test:db:migrate` | `.env.test` | Applies migrations to the test database |
+| `test:db:status`, `test:db:studio` | `.env.test` | Same as above, for the test database |
 
-## Resources
+## Seeding
 
-Check out a few resources that may come in handy when working with NestJS:
+The seed creates the roles, two demo users, and sample equipment with service records, so the app has data to show.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+> **Warning:** seeding deletes **all** equipment, QR codes, service records, photos and audit logs in the target database before adding the sample data. Existing users are kept.
 
-## Support
+Preview what it will do, then run it:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+pnpm --filter api db:seed:dry
+```
 
-## Stay in touch
+```bash
+pnpm --filter api db:seed
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+`test:db:seed` and `test:db:seed:dry` do the same for the test database. They refuse to run on a database that is not on `localhost`. Photo files that are no longer used after a seed are listed in `prisma/seeds/.orphaned-storage-keys.txt`, so you can delete them from the bucket.
 
-## License
+## Running
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Command | What it does |
+|---|---|
+| `pnpm --filter api dev` | Starts the API in watch mode on `PORT` |
+| `pnpm --filter api build` | Compiles to `dist/` |
+| `pnpm --filter api start:prod` | Runs the compiled build |
+| `pnpm --filter api lint` | Lints and fixes `src/` and `test/` |
+
+## Testing
+
+Unit tests need no database:
+
+```bash
+pnpm --filter api test
+```
+
+```bash
+pnpm --filter api test:cov
+```
+
+End-to-end tests run against the database in `.env.test`. Create a local PostgreSQL database (for example `airtracer_test`), set it in `.env.test`, then apply the migrations and run the tests:
+
+```bash
+pnpm --filter api test:db:migrate
+```
+
+```bash
+pnpm --filter api test:e2e
+```
+
+The Supabase placeholders in `.env.test.example` are enough, because the tests never write to storage.
+
+## Authentication and roles
+
+Every endpoint requires an `Authorization: Bearer <token>` header, except register, login and the public passport. Login and register return the token.
+
+The roles are `OWNER` and `TECHNICIAN`. An account can hold both: a user picks one at registration and can add the other later. Roles cannot be removed. The API checks roles and resource ownership on every request, so it never relies on the PWA hiding buttons.
+
+## Endpoints
+
+| Area | Endpoints | Who can call them |
+|---|---|---|
+| Auth | `POST /auth/register`, `POST /auth/login` | Anyone |
+| | `GET /auth/me`, `POST /auth/me/roles` | Any signed-in user |
+| Equipment | `GET`, `POST /assets`; `GET`, `PATCH`, `DELETE /assets/:id`; `PATCH /assets/:id/deactivate` | Owner (own equipment only) |
+| QR codes | `POST /qr/assets/:assetId`, `POST /qr/assets/:assetId/regenerate`, `PATCH /qr/:token/activate`, `PATCH /qr/:token/deactivate` | Owner of the equipment |
+| Public passport | `GET /qr/:token` | Anyone (approved public fields only) |
+| Service records | `POST /assets/:assetId/service-records`, `GET /service-records/mine`, `PATCH /service-records/:id/void` | Technician (voiding: the record's technician only) |
+| | `GET /service-records/:id`, `GET /assets/:assetId/service-records` | Owner or technician |
+| Service photos | `POST`, `GET /service-photo/:serviceRecordId` | Owner or technician (uploads: equipment owner or the record's technician) |
+| | `PATCH`, `DELETE /service-photo/:id` | The record's technician |
+
+Photo uploads accept one JPEG, PNG or WebP file of up to 10 MB per request. The file type is checked from its content.
+
+For request bodies, responses and status codes, see the [API contract](../docs/api-contract.md).
+
+## Deployment (Render)
+
+The deployed API runs as a Render web service from this repository.
+
+| Setting | Value |
+|---|---|
+| Build command | `pnpm install && pnpm --filter api db:generate && pnpm --filter api build` |
+| Start command | `pnpm --filter api start:prod` |
+| Environment | All variables from the table above. Set `CORS_ORIGINS` to the PWA origin (for example `https://airtracer-pwa-dev.vercel.app`) and `QR_BASE_URL` to the PWA's public domain. |
+
+On Render the variables come from the service settings, not from a `.env` file. Apply new migrations with `pnpm --filter api db:migrate` before or during a deploy.
+
+## Related documentation
+
+- [Root README](../../README.md)
+- [PWA README](../pwa/README.md)
+- [API contract](../docs/api-contract.md)
+- [Product requirements](../docs/PRD.md)

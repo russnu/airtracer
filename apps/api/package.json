@@ -47,7 +47,6 @@
     "@prisma/client": "^7.9.1",
     "@supabase/supabase-js": "^2.112.3",
     "argon2": "^0.45.1",
-    "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "ms": "^2.1.3",

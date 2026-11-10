@@ -494,7 +494,7 @@ The application is being developed in a pnpm workspace monorepo.
 
 - `apps/api/` — existing NestJS backend.
 - `apps/pwa/` — React frontend built with Vite and TypeScript.
-- `docs/` — product and technical documentation.
+- `apps/docs/` — product and technical documentation.
 
 The existing backend uses Prisma and PostgreSQL. Supabase Storage is the intended cloud storage provider for service photographs.
 
@@ -508,7 +508,7 @@ Before implementing a frontend feature:
 2. Inspect the DTOs, authentication guards, authorization rules, and response shape.
 3. Confirm the actual HTTP method, endpoint, request payload, and response.
 4. Implement frontend types and API calls to match the verified contract.
-5. Report discrepancies between the API implementation, Pand PRD rather than silently inventing behavior.
+5. Report discrepancies between the API implementation, API contract, and PRD rather than silently inventing behavior.
 
 The documented product workflows describe intended behavior; they do not prove that every backend endpoint or feature already exists.
 

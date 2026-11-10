@@ -2,11 +2,10 @@
   "name": "airtracer",
   "private": true,
   "version": "1.0.0",
-  "description": "",
+  "description": "QR-enabled digital service passport for air-conditioning equipment",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm --parallel --filter api --filter pwa dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "pnpm --parallel --filter api --filter pwa dev"
   },
   "keywords": [],
   "author": "",
